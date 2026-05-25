@@ -1,0 +1,7 @@
+[
+  { "name": "Wasser", "priceCents": 250, "category": "Softdrinks" },
+  { "name": "Cola", "priceCents": 300, "category": "Softdrinks" },
+  { "name": "Spezi", "priceCents": 320, "category": "Softdrinks" },
+  { "name": "Helles", "priceCents": 400, "category": "Bier" },
+  { "name": "Weißbier", "priceCents": 450, "category": "Bier" }
+]
