@@ -15,6 +15,7 @@ import de.arturo.bartab.data.model.Product
 import de.arturo.bartab.data.model.SaleItem
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.UUID
 
@@ -57,6 +58,36 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
     val totalCents: Int
         get() = cartItems.sumOf { it.lineTotalCents }
+
+    val todaySummary: DaySummary
+        get() {
+            val today = LocalDate.now()
+            val todaysSales = saleHistory.filter { it.createdAt.toLocalDate() == today }
+            val completedSales = todaysSales.filter { it.status == SaleStatus.COMPLETED }
+            val cancelledSales = todaysSales.filter { it.status == SaleStatus.CANCELLED }
+            return DaySummary(
+                completedSalesCount = completedSales.size,
+                cancelledSalesCount = cancelledSales.size,
+                revenueCents = completedSales.sumOf { it.totalCents },
+            )
+        }
+
+    val todayProductSummaries: List<ProductSalesSummary>
+        get() {
+            val today = LocalDate.now()
+            return saleHistory
+                .filter { it.createdAt.toLocalDate() == today && it.status == SaleStatus.COMPLETED }
+                .flatMap { it.items }
+                .groupBy { it.product.name }
+                .map { (productName, items) ->
+                    ProductSalesSummary(
+                        productName = productName,
+                        quantity = items.sumOf { it.quantity },
+                        revenueCents = items.sumOf { it.lineTotalCents },
+                    )
+                }
+                .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
+        }
 
     fun productsForSelectedCategory(): List<Product> =
         products.filter { it.categoryId == selectedCategoryId && it.active }.sortedBy { it.sortOrder }
@@ -160,6 +191,18 @@ data class SaleRecord(
 ) {
     val totalCents: Int = items.sumOf { it.lineTotalCents }
 }
+
+data class DaySummary(
+    val completedSalesCount: Int,
+    val cancelledSalesCount: Int,
+    val revenueCents: Int,
+)
+
+data class ProductSalesSummary(
+    val productName: String,
+    val quantity: Int,
+    val revenueCents: Int,
+)
 
 enum class SaleStatus(val label: String) {
     COMPLETED("abgeschlossen"),

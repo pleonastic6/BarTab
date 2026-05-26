@@ -18,6 +18,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import de.arturo.bartab.state.BarTabViewModel
 import de.arturo.bartab.ui.navigation.BarTabDestination
+import de.arturo.bartab.ui.screens.analytics.AnalyticsScreen
 import de.arturo.bartab.ui.screens.history.HistoryScreen
 import de.arturo.bartab.ui.screens.history.SaleDetailScreen
 import de.arturo.bartab.ui.screens.products.ProductsScreen
@@ -31,6 +32,7 @@ fun BarTabApp() {
     val destinations = listOf(
         BarTabDestination.Sales,
         BarTabDestination.History,
+        BarTabDestination.Analytics,
         BarTabDestination.Products,
     )
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
@@ -69,6 +71,7 @@ fun BarTabApp() {
                     onSaleClick = { saleId -> navController.navigate(BarTabDestination.SaleDetail.routeFor(saleId)) },
                 )
             }
+            composable(BarTabDestination.Analytics.route) { AnalyticsScreen(state) }
             composable(BarTabDestination.Products.route) { ProductsScreen(state) }
             composable(
                 route = BarTabDestination.SaleDetail.route,
