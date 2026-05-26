@@ -52,67 +52,73 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     val totalCents: Int
         get() = cartItems.sumOf { it.lineTotalCents }
 
-    private val todaysSales: List<SaleRecord>
-        get() {
-            val today = LocalDate.now()
-            return saleHistory.filter { it.createdAt.toLocalDate() == today }
-        }
+    private fun salesForDay(dayKey: String): List<SaleRecord> =
+        saleHistory.filter { it.createdAt.toLocalDate().toString() == dayKey }
 
-    val todaySummary: DaySummary
-        get() {
-            val completedSales = todaysSales.filter { it.status == SaleStatus.COMPLETED && !it.isStaff }
-            val cancelledSales = todaysSales.filter { it.status == SaleStatus.CANCELLED }
-            val staffSales = todaysSales.filter { it.status == SaleStatus.COMPLETED && it.isStaff }
-            return DaySummary(
-                completedSalesCount = completedSales.size,
-                cancelledSalesCount = cancelledSales.size,
-                staffSalesCount = staffSales.size,
-                revenueCents = completedSales.sumOf { it.totalCents },
-            )
-        }
-
-    val todayProductSummaries: List<ProductSalesSummary>
-        get() = todaysSales
-            .filter { it.status == SaleStatus.COMPLETED && !it.isStaff }
-            .flatMap { it.items }
-            .groupBy { it.product.name }
-            .map { (productName, items) ->
-                ProductSalesSummary(
-                    productName = productName,
-                    quantity = items.sumOf { it.quantity },
-                    revenueCents = items.sumOf { it.lineTotalCents },
-                )
-            }
-            .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
-
-    val todayStaffDrinkSummaries: List<ProductSalesSummary>
-        get() = todaysSales
-            .filter { it.status == SaleStatus.COMPLETED && it.isStaff }
-            .flatMap { it.items }
-            .groupBy { it.product.name }
-            .map { (productName, items) ->
-                ProductSalesSummary(
-                    productName = productName,
-                    quantity = items.sumOf { it.quantity },
-                    revenueCents = items.sumOf { it.lineTotalCents },
-                )
-            }
-            .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
-
-    val isTodayArchived: Boolean
-        get() = archivedDays.any { it.dayKey == LocalDate.now().toString() }
-
-    fun archiveToday() {
-        val dayKey = LocalDate.now().toString()
-        val summary = todaySummary
-        viewModelScope.launch { repository.archiveDay(dayKey, summary) }
+    private fun summaryForDay(dayKey: String): DaySummary {
+        val daySales = salesForDay(dayKey)
+        val completedSales = daySales.filter { it.status == SaleStatus.COMPLETED && !it.isStaff }
+        val cancelledSales = daySales.filter { it.status == SaleStatus.CANCELLED }
+        val staffSales = daySales.filter { it.status == SaleStatus.COMPLETED && it.isStaff }
+        return DaySummary(
+            completedSalesCount = completedSales.size,
+            cancelledSalesCount = cancelledSales.size,
+            staffSalesCount = staffSales.size,
+            revenueCents = completedSales.sumOf { it.totalCents },
+        )
     }
 
-    fun buildTodayCsv(): String {
-        val summary = todaySummary
+    private fun productSummariesForDay(dayKey: String, staff: Boolean): List<ProductSalesSummary> =
+        salesForDay(dayKey)
+            .filter { it.status == SaleStatus.COMPLETED && it.isStaff == staff }
+            .flatMap { it.items }
+            .groupBy { it.product.name }
+            .map { (productName, items) ->
+                ProductSalesSummary(
+                    productName = productName,
+                    quantity = items.sumOf { it.quantity },
+                    revenueCents = items.sumOf { it.lineTotalCents },
+                )
+            }
+            .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
+
+    val todayKey: String
+        get() = LocalDate.now().toString()
+
+    val todaySummary: DaySummary
+        get() = summaryForDay(todayKey)
+
+    val todayProductSummaries: List<ProductSalesSummary>
+        get() = productSummariesForDay(todayKey, staff = false)
+
+    val todayStaffDrinkSummaries: List<ProductSalesSummary>
+        get() = productSummariesForDay(todayKey, staff = true)
+
+    val isTodayArchived: Boolean
+        get() = archivedDays.any { it.dayKey == todayKey }
+
+    fun archivedDayByKey(dayKey: String): ArchivedDay? = archivedDays.firstOrNull { it.dayKey == dayKey }
+
+    fun summaryForArchivedDay(dayKey: String): DaySummary = archivedDayByKey(dayKey)?.summary ?: summaryForDay(dayKey)
+
+    fun soldProductsForArchivedDay(dayKey: String): List<ProductSalesSummary> = productSummariesForDay(dayKey, staff = false)
+
+    fun staffDrinksForArchivedDay(dayKey: String): List<ProductSalesSummary> = productSummariesForDay(dayKey, staff = true)
+
+    fun archiveToday() {
+        if (isTodayArchived) return
+        viewModelScope.launch { repository.archiveDay(todayKey, todaySummary) }
+        clearCart()
+    }
+
+    fun buildTodayCsv(): String = buildCsvForDay(todayKey)
+
+    fun buildCsvForDay(dayKey: String): String {
+        val summary = summaryForArchivedDay(dayKey)
+        val daySales = salesForDay(dayKey)
         val timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
         val builder = StringBuilder()
-        builder.appendLine("BarTab Tagesexport;${LocalDate.now()}")
+        builder.appendLine("BarTab Tagesexport;$dayKey")
         builder.appendLine("Umsatz;${summary.revenueCents.toEuroDecimal()}")
         builder.appendLine("Verkäufe;${summary.completedSalesCount}")
         builder.appendLine("Personalgetränke;${summary.staffSalesCount}")
@@ -121,7 +127,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
         builder.appendLine("Verkaufte Getränke")
         builder.appendLine("sale_id;zeit;status;produkt;menge;einzelpreis_eur;zeilensumme_eur")
-        todaysSales
+        daySales
             .filter { it.status == SaleStatus.COMPLETED && !it.isStaff }
             .forEach { sale ->
                 sale.items.forEach { item ->
@@ -142,7 +148,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         builder.appendLine()
         builder.appendLine("Personalgetränke")
         builder.appendLine("sale_id;zeit;status;produkt;menge;einzelpreis_eur;zeilensumme_eur")
-        todaysSales
+        daySales
             .filter { it.status == SaleStatus.COMPLETED && it.isStaff }
             .forEach { sale ->
                 sale.items.forEach { item ->
@@ -163,7 +169,9 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         return builder.toString()
     }
 
-    fun exportFileName(): String = "bartab-export-${LocalDate.now()}.csv"
+    fun exportFileName(): String = "bartab-export-$todayKey.csv"
+
+    fun exportFileNameForDay(dayKey: String): String = "bartab-export-$dayKey.csv"
 
     fun activeProductsForCategory(categoryId: String): List<Product> =
         products.filter { it.categoryId == categoryId && it.active }.sortedBy { it.sortOrder }
@@ -175,6 +183,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun addProduct(productId: String) {
+        if (isTodayArchived) return
         cartMap[productId] = (cartMap[productId] ?: 0) + 1
     }
 
@@ -191,6 +200,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun completeSale() {
+        if (isTodayArchived) return
         val items = cartItems
         if (items.isEmpty()) return
         val isStaff = currentSaleIsStaff
@@ -202,6 +212,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleCurrentSaleIsStaff(value: Boolean) {
+        if (isTodayArchived) return
         currentSaleIsStaff = value
     }
 
@@ -246,6 +257,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     fun saleById(saleId: String): SaleRecord? = saleHistory.firstOrNull { it.id == saleId }
 
     fun loadSaleIntoCart(saleId: String): Boolean {
+        if (isTodayArchived) return false
         val sale = saleById(saleId) ?: return false
         val nextCart = linkedMapOf<String, Int>()
         sale.items.forEach { item ->

@@ -32,6 +32,7 @@ import androidx.navigation.navArgument
 import de.arturo.bartab.state.BarTabViewModel
 import de.arturo.bartab.ui.navigation.BarTabDestination
 import de.arturo.bartab.ui.screens.analytics.AnalyticsScreen
+import de.arturo.bartab.ui.screens.analytics.ArchivedDayDetailScreen
 import de.arturo.bartab.ui.screens.history.HistoryScreen
 import de.arturo.bartab.ui.screens.history.SaleDetailScreen
 import de.arturo.bartab.ui.screens.products.ProductsScreen
@@ -65,6 +66,7 @@ fun BarTabApp() {
                         Checkbox(
                             checked = state.currentSaleIsStaff,
                             onCheckedChange = state::toggleCurrentSaleIsStaff,
+                            enabled = !state.isTodayArchived,
                         )
                         Text(
                             "Personal",
@@ -116,7 +118,12 @@ fun BarTabApp() {
                     onSaleClick = { saleId -> navController.navigate(BarTabDestination.SaleDetail.routeFor(saleId)) },
                 )
             }
-            composable(BarTabDestination.Analytics.route) { AnalyticsScreen(state) }
+            composable(BarTabDestination.Analytics.route) {
+                AnalyticsScreen(
+                    state = state,
+                    onOpenArchivedDay = { dayKey -> navController.navigate(BarTabDestination.ArchiveDayDetail.routeFor(dayKey)) },
+                )
+            }
             composable(BarTabDestination.Products.route) { ProductsScreen(state) }
             composable(
                 route = BarTabDestination.SaleDetail.route,
@@ -128,6 +135,17 @@ fun BarTabApp() {
                     onBack = { navController.popBackStack() },
                     onLoadIntoCart = { state.loadSaleIntoCart(it) },
                     onCancelSale = { state.cancelSale(it) },
+                )
+            }
+            composable(
+                route = BarTabDestination.ArchiveDayDetail.route,
+                arguments = listOf(navArgument("dayKey") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val dayKey = backStackEntry.arguments?.getString("dayKey").orEmpty()
+                ArchivedDayDetailScreen(
+                    dayKey = dayKey,
+                    state = state,
+                    onBack = { navController.popBackStack() },
                 )
             }
         }
