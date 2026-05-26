@@ -6,8 +6,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -19,6 +22,8 @@ import de.arturo.bartab.state.SaleRecord
 import de.arturo.bartab.state.SaleStatus
 import de.arturo.bartab.ui.components.toEuroString
 import java.time.format.DateTimeFormatter
+
+private val SaleDetailTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm")
 
 @Composable
 fun SaleDetailScreen(
@@ -40,51 +45,80 @@ fun SaleDetailScreen(
         return
     }
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Verkaufsdetail", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(sale.createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm")), fontWeight = FontWeight.SemiBold)
-                Text("Status: ${sale.status.label}")
-                if (sale.isStaff) {
-                    Text("Personalgetränk", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                }
-                sale.items.forEach { item ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Text("${item.quantity}× ${item.product.name}")
-                        Text(item.lineTotalCents.toEuroString())
+        item {
+            Text("Verkaufsdetail", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+        }
+        item {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(sale.createdAt.format(SaleDetailTimeFormatter), fontWeight = FontWeight.SemiBold)
+                    Text("Status: ${sale.status.label}")
+                    if (sale.isStaff) {
+                        Text("Personalgetränk", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                     }
+                    Text(
+                        if (sale.isStaff) "Dokumentiert ohne Umsatz" else "Summe: ${sale.totalCents.toEuroString()}",
+                        fontWeight = FontWeight.Bold,
+                    )
                 }
-                Text(
-                    if (sale.isStaff) "Dokumentiert ohne Umsatz" else "Summe: ${sale.totalCents.toEuroString()}",
-                    fontWeight = FontWeight.Bold,
-                )
             }
         }
-        Button(
-            onClick = {
-                onLoadIntoCart(sale.id)
-                onBack()
-            },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = sale.status == SaleStatus.COMPLETED,
-        ) {
-            Text("Wieder öffnen")
+        item {
+            Text("Positionen", fontWeight = FontWeight.Bold)
         }
-        OutlinedButton(
-            onClick = { onCancelSale(sale.id) },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = sale.status == SaleStatus.COMPLETED,
-        ) {
-            Text("Verkauf stornieren")
+        items(sale.items, key = { it.product.id + "-" + it.quantity }) { item ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(item.product.name, fontWeight = FontWeight.SemiBold)
+                        Text("${item.quantity} Stück", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    Text(item.lineTotalCents.toEuroString(), fontWeight = FontWeight.Bold)
+                }
+            }
         }
-        OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-            Text("Zurück")
+        item {
+            Button(
+                onClick = {
+                    onLoadIntoCart(sale.id)
+                    onBack()
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = sale.status == SaleStatus.COMPLETED,
+            ) {
+                Text("Wieder öffnen")
+            }
+        }
+        item {
+            OutlinedButton(
+                onClick = { onCancelSale(sale.id) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = sale.status == SaleStatus.COMPLETED,
+            ) {
+                Text("Verkauf stornieren")
+            }
+        }
+        item {
+            OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
+                Text("Zurück")
+            }
         }
     }
 }

@@ -26,6 +26,8 @@ import de.arturo.bartab.ui.components.toEuroString
 import de.arturo.bartab.ui.export.shareCsv
 import java.time.format.DateTimeFormatter
 
+private val ArchiveTimestampFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm")
+
 @Composable
 fun AnalyticsScreen(
     state: BarTabViewModel,
@@ -68,6 +70,22 @@ fun AnalyticsScreen(
                 }
             }
         }
+        if (state.isTodayArchived) {
+            item {
+                Card(modifier = Modifier.fillMaxWidth()) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text("Heutiger Tag bereits archiviert", fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Du kannst weiterverkaufen. Mit erneutem Tagesabschluss aktualisierst du den Snapshot.",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
         item {
             Card(modifier = Modifier.fillMaxWidth()) {
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -81,19 +99,19 @@ fun AnalyticsScreen(
         }
         item { Text("Verkaufte Getränke", fontWeight = FontWeight.Bold) }
         if (soldProducts.isEmpty()) {
-            item { Text("Heute wurden noch keine bezahlten Verkäufe abgeschlossen") }
+            item { EmptyAnalyticsCard("Heute wurden noch keine bezahlten Verkäufe abgeschlossen") }
         } else {
             items(soldProducts, key = { "sold-" + it.productName }) { item -> ProductSummaryCard(item) }
         }
         item { Text("Personalgetränke", fontWeight = FontWeight.Bold) }
         if (staffDrinks.isEmpty()) {
-            item { Text("Heute wurden noch keine Personalgetränke dokumentiert") }
+            item { EmptyAnalyticsCard("Heute wurden noch keine Personalgetränke dokumentiert") }
         } else {
             items(staffDrinks, key = { "staff-" + it.productName }) { item -> ProductSummaryCard(item) }
         }
         item { Text("Archivierte Tage", fontWeight = FontWeight.Bold) }
         if (archivedDays.isEmpty()) {
-            item { Text("Noch kein Tagesabschluss archiviert") }
+            item { EmptyAnalyticsCard("Noch kein Tagesabschluss archiviert") }
         } else {
             items(archivedDays, key = { it.dayKey }) { day -> ArchivedDayCard(day, onOpen = { onOpenArchivedDay(day.dayKey) }) }
         }
@@ -127,7 +145,7 @@ private fun ArchivedDayCard(day: ArchivedDay, onOpen: () -> Unit) {
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(day.dayKey, fontWeight = FontWeight.Bold)
-            SummaryRow("Archiviert", day.closedAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm")))
+            SummaryRow("Archiviert", day.closedAt.format(ArchiveTimestampFormatter))
             SummaryRow("Umsatz", day.summary.revenueCents.toEuroString())
             SummaryRow("Verkäufe", day.summary.completedSalesCount.toString())
             SummaryRow("Personalgetränke", day.summary.staffSalesCount.toString())
@@ -141,5 +159,16 @@ private fun SummaryRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label)
         Text(value, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun EmptyAnalyticsCard(message: String) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }

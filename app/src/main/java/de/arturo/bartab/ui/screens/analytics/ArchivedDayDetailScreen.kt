@@ -22,6 +22,9 @@ import de.arturo.bartab.state.BarTabViewModel
 import de.arturo.bartab.state.ProductSalesSummary
 import de.arturo.bartab.ui.components.toEuroString
 import de.arturo.bartab.ui.export.shareCsv
+import java.time.format.DateTimeFormatter
+
+private val ArchivedDetailTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm")
 
 @Composable
 fun ArchivedDayDetailScreen(
@@ -68,7 +71,7 @@ fun ArchivedDayDetailScreen(
                 Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Archiv", fontWeight = FontWeight.Bold)
                     if (archivedDay != null) {
-                        SummaryRow("Abgeschlossen", archivedDay.closedAt.toLocalTime().toString())
+                        SummaryRow("Abgeschlossen", archivedDay.closedAt.format(ArchivedDetailTimeFormatter))
                     }
                     SummaryRow("Umsatz", summary.revenueCents.toEuroString())
                     SummaryRow("Verkäufe", summary.completedSalesCount.toString())
@@ -79,13 +82,13 @@ fun ArchivedDayDetailScreen(
         }
         item { Text("Verkaufte Getränke", fontWeight = FontWeight.Bold) }
         if (soldProducts.isEmpty()) {
-            item { Text("Keine bezahlten Verkäufe archiviert") }
+            item { EmptyArchiveCard("Keine bezahlten Verkäufe archiviert") }
         } else {
             items(soldProducts, key = { "sold-" + it.productName }) { item -> ProductSummaryCard(item) }
         }
         item { Text("Personalgetränke", fontWeight = FontWeight.Bold) }
         if (staffDrinks.isEmpty()) {
-            item { Text("Keine Personalgetränke archiviert") }
+            item { EmptyArchiveCard("Keine Personalgetränke archiviert") }
         } else {
             items(staffDrinks, key = { "staff-" + it.productName }) { item -> ProductSummaryCard(item) }
         }
@@ -115,5 +118,16 @@ private fun SummaryRow(label: String, value: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         Text(label)
         Text(value, fontWeight = FontWeight.SemiBold)
+    }
+}
+
+@Composable
+private fun EmptyArchiveCard(message: String) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(16.dp),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
