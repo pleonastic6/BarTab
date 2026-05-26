@@ -24,7 +24,8 @@ import de.arturo.bartab.ui.export.shareCsv
 @Composable
 fun AnalyticsScreen(state: BarTabViewModel) {
     val summary = state.todaySummary
-    val productSummaries = state.todayProductSummaries
+    val soldProducts = state.todayProductSummaries
+    val staffDrinks = state.todayStaffDrinkSummaries
     val context = LocalContext.current
 
     Column(
@@ -58,26 +59,38 @@ fun AnalyticsScreen(state: BarTabViewModel) {
             }
         }
 
-        Text("Produkte heute", fontWeight = FontWeight.Bold)
-        if (productSummaries.isEmpty()) {
+        Text("Verkaufte Getränke", fontWeight = FontWeight.Bold)
+        if (soldProducts.isEmpty()) {
             Text("Heute wurden noch keine bezahlten Verkäufe abgeschlossen")
         } else {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                items(productSummaries, key = { it.productName }) { item ->
-                    Card(modifier = Modifier.fillMaxWidth()) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                        ) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(item.productName, fontWeight = FontWeight.SemiBold)
-                                Text("${item.quantity} verkauft")
-                            }
-                            Text(item.revenueCents.toEuroString(), fontWeight = FontWeight.Bold)
-                        }
+            ProductSummaryList(items = soldProducts)
+        }
+
+        Text("Personalgetränke", fontWeight = FontWeight.Bold)
+        if (staffDrinks.isEmpty()) {
+            Text("Heute wurden noch keine Personalgetränke dokumentiert")
+        } else {
+            ProductSummaryList(items = staffDrinks)
+        }
+    }
+}
+
+@Composable
+private fun ProductSummaryList(items: List<de.arturo.bartab.state.ProductSalesSummary>) {
+    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        items(items, key = { it.productName }) { item ->
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(item.productName, fontWeight = FontWeight.SemiBold)
+                        Text("${item.quantity} Stück")
                     }
+                    Text(item.revenueCents.toEuroString(), fontWeight = FontWeight.Bold)
                 }
             }
         }

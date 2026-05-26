@@ -82,6 +82,20 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
             }
             .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
 
+    val todayStaffDrinkSummaries: List<ProductSalesSummary>
+        get() = todaysSales
+            .filter { it.status == SaleStatus.COMPLETED && it.isStaff }
+            .flatMap { it.items }
+            .groupBy { it.product.name }
+            .map { (productName, items) ->
+                ProductSalesSummary(
+                    productName = productName,
+                    quantity = items.sumOf { it.quantity },
+                    revenueCents = items.sumOf { it.lineTotalCents },
+                )
+            }
+            .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
+
     fun buildTodayCsv(): String {
         val summary = todaySummary
         val timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -92,24 +106,47 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         builder.appendLine("Personalgetränke;${summary.staffSalesCount}")
         builder.appendLine("Stornos;${summary.cancelledSalesCount}")
         builder.appendLine()
-        builder.appendLine("sale_id;zeit;status;personal;produkt;menge;einzelpreis_eur;zeilensumme_eur")
 
-        todaysSales.forEach { sale ->
-            sale.items.forEach { item ->
-                builder.appendLine(
-                    listOf(
-                        sale.id,
-                        sale.createdAt.format(timeFormat),
-                        sale.status.name,
-                        if (sale.isStaff) "ja" else "nein",
-                        item.product.name.csvEscape(),
-                        item.quantity.toString(),
-                        item.product.priceCents.toEuroDecimal(),
-                        item.lineTotalCents.toEuroDecimal(),
-                    ).joinToString(";"),
-                )
+        builder.appendLine("Verkaufte Getränke")
+        builder.appendLine("sale_id;zeit;status;produkt;menge;einzelpreis_eur;zeilensumme_eur")
+        todaysSales
+            .filter { it.status == SaleStatus.COMPLETED && !it.isStaff }
+            .forEach { sale ->
+                sale.items.forEach { item ->
+                    builder.appendLine(
+                        listOf(
+                            sale.id,
+                            sale.createdAt.format(timeFormat),
+                            sale.status.name,
+                            item.product.name.csvEscape(),
+                            item.quantity.toString(),
+                            item.product.priceCents.toEuroDecimal(),
+                            item.lineTotalCents.toEuroDecimal(),
+                        ).joinToString(";"),
+                    )
+                }
             }
-        }
+
+        builder.appendLine()
+        builder.appendLine("Personalgetränke")
+        builder.appendLine("sale_id;zeit;status;produkt;menge;einzelpreis_eur;zeilensumme_eur")
+        todaysSales
+            .filter { it.status == SaleStatus.COMPLETED && it.isStaff }
+            .forEach { sale ->
+                sale.items.forEach { item ->
+                    builder.appendLine(
+                        listOf(
+                            sale.id,
+                            sale.createdAt.format(timeFormat),
+                            sale.status.name,
+                            item.product.name.csvEscape(),
+                            item.quantity.toString(),
+                            item.product.priceCents.toEuroDecimal(),
+                            item.lineTotalCents.toEuroDecimal(),
+                        ).joinToString(";"),
+                    )
+                }
+            }
 
         return builder.toString()
     }
