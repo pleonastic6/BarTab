@@ -6,11 +6,13 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import de.arturo.bartab.state.BarTabState
 import de.arturo.bartab.ui.navigation.BarTabDestination
 import de.arturo.bartab.ui.screens.history.HistoryScreen
 import de.arturo.bartab.ui.screens.products.ProductsScreen
@@ -19,6 +21,7 @@ import de.arturo.bartab.ui.screens.sales.SalesScreen
 @Composable
 fun BarTabApp() {
     val navController = rememberNavController()
+    val state = remember { BarTabState() }
     val destinations = listOf(
         BarTabDestination.Sales,
         BarTabDestination.History,
@@ -53,8 +56,8 @@ fun BarTabApp() {
             startDestination = BarTabDestination.Sales.route,
             modifier = Modifier.padding(innerPadding),
         ) {
-            composable(BarTabDestination.Sales.route) { SalesScreen() }
-            composable(BarTabDestination.History.route) { HistoryScreen() }
+            composable(BarTabDestination.Sales.route) { SalesScreen(state) }
+            composable(BarTabDestination.History.route) { HistoryScreen(state) }
             composable(BarTabDestination.Products.route) { ProductsScreen() }
         }
     }

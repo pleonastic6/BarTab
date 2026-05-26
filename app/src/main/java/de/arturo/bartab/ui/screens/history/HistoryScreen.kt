@@ -14,10 +14,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import de.arturo.bartab.data.model.SampleData
+import de.arturo.bartab.state.BarTabState
+import de.arturo.bartab.ui.components.toEuroString
 
 @Composable
-fun HistoryScreen() {
+fun HistoryScreen(state: BarTabState) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -25,12 +26,19 @@ fun HistoryScreen() {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text("Historie", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(SampleData.recentSales) { sale ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(sale, fontWeight = FontWeight.SemiBold)
-                        Text("Tippen zum Öffnen, Ändern oder Stornieren")
+
+        if (state.saleHistory.isEmpty()) {
+            Text("Noch keine Verkäufe gespeichert")
+        } else {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                items(state.saleHistory) { sale ->
+                    Card(modifier = Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(sale.summary(), fontWeight = FontWeight.SemiBold)
+                            sale.items.forEach { item ->
+                                Text("${item.quantity}× ${item.product.name} · ${item.lineTotalCents.toEuroString()}")
+                            }
+                        }
                     }
                 }
             }

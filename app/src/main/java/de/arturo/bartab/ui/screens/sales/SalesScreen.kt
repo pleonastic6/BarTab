@@ -13,28 +13,20 @@ import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import de.arturo.bartab.data.model.SampleData
+import de.arturo.bartab.state.BarTabState
 import de.arturo.bartab.ui.components.toEuroString
 
 @Composable
-fun SalesScreen() {
-    val cart = remember { mutableStateMapOf<String, Int>() }
-    val categories = SampleData.categories
-    val selectedCategory = remember { androidx.compose.runtime.mutableStateOf(categories.first().id) }
-    val products = SampleData.products.filter { it.categoryId == selectedCategory.value }
-    val total = cart.entries.sumOf { entry ->
-        val product = SampleData.products.first { it.id == entry.key }
-        product.priceCents * entry.value
-    }
+fun SalesScreen(state: BarTabState) {
+    val categories = state.categories
+    val products = state.productsForSelectedCategory()
+    val cartItems = state.cartItems
 
     Column(
         modifier = Modifier
@@ -46,7 +38,7 @@ fun SalesScreen() {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             categories.forEach { category ->
                 AssistChip(
-                    onClick = { selectedCategory.value = category.id },
+                    onClick = { state.selectedCategoryId = category.id },
                     label = { Text(category.name) },
                 )
             }
@@ -58,11 +50,12 @@ fun SalesScreen() {
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             items(products) { product ->
-                Card(onClick = { cart[product.id] = (cart[product.id] ?: 0) + 1 }) {
+                Card(onClick = { state.addProduct(product.id) }) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(product.name, fontWeight = FontWeight.Bold)
                         Text(product.priceCents.toEuroString())
-                        Text("Im Warenkorb: ${cart[product.id] ?: 0}")
+                        val qty = cartItems.firstOrNull { it.product.id == product.id }?.quantity ?: 0
+                        Text("Im Warenkorb: $qty")
                     }
                 }
             }
@@ -70,16 +63,32 @@ fun SalesScreen() {
         Card(modifier = Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text("Aktueller Warenkorb", fontWeight = FontWeight.Bold)
-                if (cart.isEmpty()) {
+                if (cartItems.isEmpty()) {
                     Text("Noch keine Produkte ausgewählt")
                 } else {
-                    cart.entries.forEach { entry ->
-                        val product = SampleData.products.first { it.id == entry.key }
-                        Text("${entry.value}× ${product.name} · ${(product.priceCents * entry.value).toEuroString()}")
+                    cartItems.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(item.product.name, fontWeight = FontWeight.SemiBold)
+                                Text(item.lineTotalCents.toEuroString())
+                            }
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(onClick = { state.decrement(item.product.id) }) { Text("-") }
+                                Text(item.quantity.toString(), modifier = Modifier.padding(top = 12.dp))
+                                OutlinedButton(onClick = { state.increment(item.product.id) }) { Text("+") }
+                            }
+                        }
                     }
                 }
-                Text("Summe: ${total.toEuroString()}", fontWeight = FontWeight.Bold)
-                Button(onClick = { /* next step: persist sale */ }, modifier = Modifier.fillMaxWidth()) {
+                Text("Summe: ${state.totalCents.toEuroString()}", fontWeight = FontWeight.Bold)
+                Button(
+                    onClick = { state.completeSale() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = cartItems.isNotEmpty(),
+                ) {
                     Text("Verkauf abschließen")
                 }
             }
