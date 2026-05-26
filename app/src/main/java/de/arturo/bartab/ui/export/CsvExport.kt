@@ -16,12 +16,16 @@ fun shareCsv(context: Context, fileName: String, content: String) {
         csvFile,
     )
 
-    val intent = Intent(Intent.ACTION_SEND).apply {
+    val sendIntent = Intent(Intent.ACTION_SEND).apply {
         type = "text/csv"
         putExtra(Intent.EXTRA_STREAM, uri)
         putExtra(Intent.EXTRA_SUBJECT, fileName)
         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     }
 
-    context.startActivity(Intent.createChooser(intent, "CSV exportieren"))
+    val chooser = Intent.createChooser(sendIntent, "CSV exportieren").apply {
+        addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    }
+
+    context.startActivity(chooser)
 }

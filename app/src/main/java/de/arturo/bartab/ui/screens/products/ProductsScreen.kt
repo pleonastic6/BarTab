@@ -27,9 +27,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import de.arturo.bartab.data.model.Category
 import de.arturo.bartab.data.model.Product
 import de.arturo.bartab.state.BarTabViewModel
 import de.arturo.bartab.ui.components.toEuroString
+import kotlin.math.roundToInt
 
 @Composable
 fun ProductsScreen(state: BarTabViewModel) {
@@ -50,7 +52,26 @@ fun ProductsScreen(state: BarTabViewModel) {
                 Button(onClick = { showCreateDialog = true }) { Text("Neu") }
             }
         }
-        LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+
+        if (state.products.isEmpty()) {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text("Noch keine Produkte vorhanden", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        "Lege zuerst Kategorien und danach die ersten Getränke an.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             items(state.products, key = { it.id }) { product ->
                 Card(
                     modifier = Modifier.fillMaxWidth(),
@@ -120,7 +141,7 @@ fun ProductsScreen(state: BarTabViewModel) {
 @Composable
 private fun ProductDialog(
     title: String,
-    categories: List<de.arturo.bartab.data.model.Category>,
+    categories: List<Category>,
     initialProduct: Product?,
     onDismiss: () -> Unit,
     onSave: (name: String, priceCents: Int, categoryId: String, active: Boolean, quickAccess: Boolean) -> Unit,
@@ -136,6 +157,9 @@ private fun ProductDialog(
     }
     var active by remember(initialProduct) { mutableStateOf(initialProduct?.active ?: true) }
     var quickAccess by remember(initialProduct) { mutableStateOf(initialProduct?.quickAccess ?: false) }
+
+    val parsedPriceCents = remember(priceEuros) { parseEuroCents(priceEuros) }
+    val priceError = priceEuros.isNotBlank() && parsedPriceCents == null
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -156,6 +180,12 @@ private fun ProductDialog(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    isError = priceError,
+                    supportingText = {
+                        if (priceError) {
+                            Text("Bitte einen gültigen Betrag eingeben, z. B. 2,50")
+                        }
+                    },
                 )
                 Text("Kategorie", fontWeight = FontWeight.SemiBold)
                 categories.forEach { category ->
@@ -168,7 +198,14 @@ private fun ProductDialog(
                     }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text("In Hotbar", modifier = Modifier.padding(top = 12.dp))
+                    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("In Hotbar", modifier = Modifier.padding(top = 12.dp))
+                        Text(
+                            "Erscheint im Schnellzugriff der Kategorie.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     Switch(checked = quickAccess, onCheckedChange = { quickAccess = it })
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -180,11 +217,10 @@ private fun ProductDialog(
         confirmButton = {
             Button(
                 onClick = {
-                    val normalized = priceEuros.replace(',', '.')
-                    val cents = (normalized.toDoubleOrNull()?.times(100))?.toInt() ?: return@Button
+                    val cents = parsedPriceCents ?: return@Button
                     onSave(name, cents, categoryId, active, quickAccess)
                 },
-                enabled = name.isNotBlank() && categoryId.isNotBlank() && categories.isNotEmpty(),
+                enabled = name.isNotBlank() && categoryId.isNotBlank() && categories.isNotEmpty() && parsedPriceCents != null,
             ) {
                 Text("Speichern")
             }
@@ -223,4 +259,11 @@ private fun CategoryDialog(
             OutlinedButton(onClick = onDismiss) { Text("Abbrechen") }
         },
     )
+}
+
+private fun parseEuroCents(raw: String): Int? {
+    val normalized = raw.trim().replace(',', '.')
+    val value = normalized.toDoubleOrNull() ?: return null
+    if (value < 0) return null
+    return (value * 100).roundToInt()
 }

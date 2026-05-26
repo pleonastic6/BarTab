@@ -65,6 +65,7 @@ fun SalesScreen(state: BarTabViewModel) {
                 ) {
                     CategoryHotbarList(
                         categories = categories,
+                        cartItems = cartItems,
                         state = state,
                         onOpenCategory = { expandedCategory = it },
                         modifier = Modifier.weight(1.25f),
@@ -90,6 +91,7 @@ fun SalesScreen(state: BarTabViewModel) {
                 ) {
                     CategoryHotbarList(
                         categories = categories,
+                        cartItems = cartItems,
                         state = state,
                         onOpenCategory = { expandedCategory = it },
                         modifier = Modifier.weight(1f),
@@ -122,27 +124,47 @@ fun SalesScreen(state: BarTabViewModel) {
 @Composable
 private fun CategoryHotbarList(
     categories: List<Category>,
+    cartItems: List<SaleItem>,
     state: BarTabViewModel,
     onOpenCategory: (Category) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val cartQuantities = remember(cartItems) {
+        cartItems.associate { it.product.id to it.quantity }
+    }
+
     Card(
         modifier = modifier.fillMaxSize(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (categories.isEmpty()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "Noch keine Kategorien vorhanden",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        } else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(bottom = 8.dp),
+            ) {
                 items(categories, key = { it.id }) { category ->
                     val hotbarProducts = state.quickAccessProductsForCategory(category.id)
                     CategoryRowCard(
                         category = category,
                         hotbarProducts = hotbarProducts,
+                        cartQuantities = cartQuantities,
                         onOpenCategory = { onOpenCategory(category) },
                         onAddProduct = state::addProduct,
                     )
@@ -156,6 +178,7 @@ private fun CategoryHotbarList(
 private fun CategoryRowCard(
     category: Category,
     hotbarProducts: List<Product>,
+    cartQuantities: Map<String, Int>,
     onOpenCategory: () -> Unit,
     onAddProduct: (String) -> Unit,
 ) {
@@ -189,17 +212,39 @@ private fun CategoryRowCard(
                 }
             }
 
-            LazyVerticalGrid(
-                columns = GridCells.Fixed(4),
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 110.dp, max = 160.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                userScrollEnabled = false,
-            ) {
-                items(hotbarProducts, key = { it.id }) { product ->
-                    HotbarTile(product = product, onClick = { onAddProduct(product.id) })
+            if (hotbarProducts.isEmpty()) {
+                Card(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 110.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                ) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Text(
+                            "Keine Hotbar-Produkte gesetzt",
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Fixed(4),
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 110.dp, max = 160.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    userScrollEnabled = false,
+                ) {
+                    items(hotbarProducts, key = { it.id }) { product ->
+                        HotbarTile(
+                            product = product,
+                            quantityInCart = cartQuantities[product.id] ?: 0,
+                            onClick = { onAddProduct(product.id) },
+                        )
+                    }
                 }
             }
         }
@@ -209,6 +254,7 @@ private fun CategoryRowCard(
 @Composable
 private fun HotbarTile(
     product: Product,
+    quantityInCart: Int,
     onClick: () -> Unit,
 ) {
     Card(
@@ -223,7 +269,33 @@ private fun HotbarTile(
                 .padding(10.dp),
             verticalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(product.name, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top,
+            ) {
+                Text(
+                    product.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    modifier = Modifier.weight(1f),
+                )
+                if (quantityInCart > 0) {
+                    Box(
+                        modifier = Modifier
+                            .padding(start = 8.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            quantityInCart.toString(),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                    }
+                }
+            }
             Text(
                 product.priceCents.toEuroString(),
                 style = MaterialTheme.typography.labelLarge,
@@ -245,17 +317,31 @@ private fun CategoryItemsDialog(
         onDismissRequest = onDismiss,
         title = { Text(category.name) },
         text = {
-            LazyVerticalGrid(
-                columns = GridCells.Adaptive(140.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 220.dp, max = 520.dp),
-            ) {
-                items(products, key = { it.id }) { product ->
-                    val qty = cartItems.firstOrNull { it.product.id == product.id }?.quantity ?: 0
-                    ProductTile(product = product, quantityInCart = qty, onClick = { onAddProduct(product.id) })
+            if (products.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 160.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "In dieser Kategorie sind keine aktiven Produkte vorhanden",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            } else {
+                LazyVerticalGrid(
+                    columns = GridCells.Adaptive(140.dp),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 220.dp, max = 520.dp),
+                ) {
+                    items(products, key = { it.id }) { product ->
+                        val qty = cartItems.firstOrNull { it.product.id == product.id }?.quantity ?: 0
+                        ProductTile(product = product, quantityInCart = qty, onClick = { onAddProduct(product.id) })
+                    }
                 }
             }
         },
@@ -330,6 +416,8 @@ private fun CartPanel(
     onComplete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val articleCount = remember(cartItems) { cartItems.sumOf { it.quantity } }
+
     Card(
         modifier = modifier,
         shape = RoundedCornerShape(24.dp),
@@ -341,7 +429,10 @@ private fun CartPanel(
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text("Warenkorb", style = MaterialTheme.typography.titleLarge)
+            Text(
+                if (articleCount > 0) "Warenkorb · $articleCount" else "Warenkorb",
+                style = MaterialTheme.typography.titleLarge,
+            )
 
             if (cartItems.isEmpty()) {
                 Box(modifier = Modifier.weight(1f, fill = false)) {
@@ -398,7 +489,11 @@ private fun CartPanel(
                 modifier = Modifier.fillMaxWidth(),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                OutlinedButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
+                OutlinedButton(
+                    onClick = onClear,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = cartItems.isNotEmpty(),
+                ) {
                     Text("Warenkorb leeren")
                 }
                 Card(
