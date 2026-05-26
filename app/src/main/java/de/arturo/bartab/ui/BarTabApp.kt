@@ -2,6 +2,7 @@ package de.arturo.bartab.ui
 
 import android.app.Application
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -72,28 +73,32 @@ fun BarTabApp() {
                         )
                     }
                 }
-                TextButton(onClick = { menuExpanded = true }) {
-                    Text("☰")
-                }
-                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                    destinations.forEach { destination ->
-                        DropdownMenuItem(
-                            text = {
-                                val suffix = if (currentRoute == destination.route) " •" else ""
-                                Text(destination.label + suffix)
-                            },
-                            onClick = {
-                                menuExpanded = false
-                                navController.navigate(destination.route) {
-                                    launchSingleTop = true
-                                    restoreState = true
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
+                Box {
+                    TextButton(onClick = { menuExpanded = true }) {
+                        Text("☰")
                     }
-                }
-            }
-        },
-                        )
+                    DropdownMenu(
+                        expanded = menuExpanded,
+                        onDismissRequest = { menuExpanded = false },
+                    ) {
+                        destinations.forEach { destination ->
+                            DropdownMenuItem(
+                                text = {
+                                    val suffix = if (currentRoute == destination.route) " •" else ""
+                                    Text(destination.label + suffix)
+                                },
+                                onClick = {
+                                    menuExpanded = false
+                                    navController.navigate(destination.route) {
+                                        launchSingleTop = true
+                                        restoreState = true
+                                        popUpTo(navController.graph.startDestinationId) {
+                                            saveState = true
+                                        }
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
             }
