@@ -18,8 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import de.arturo.bartab.data.model.Category
 import de.arturo.bartab.data.model.Product
@@ -137,7 +136,8 @@ private fun CategoryHotbarList(
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(categories, key = { it.id }) { category ->
                     val hotbarProducts = state.quickAccessProductsForCategory(category.id)
                     CategoryRowCard(
@@ -185,12 +185,15 @@ private fun CategoryRowCard(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(category.name, style = MaterialTheme.typography.titleLarge)                }
+                    Text(category.name, style = MaterialTheme.typography.titleLarge)
+                }
             }
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(4),
-                modifier = Modifier.weight(1f).heightIn(min = 92.dp, max = 160.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .heightIn(min = 110.dp, max = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
                 userScrollEnabled = false,
@@ -246,7 +249,9 @@ private fun CategoryItemsDialog(
                 columns = GridCells.Adaptive(140.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp, max = 520.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 220.dp, max = 520.dp),
             ) {
                 items(products, key = { it.id }) { product ->
                     val qty = cartItems.firstOrNull { it.product.id == product.id }?.quantity ?: 0
@@ -332,77 +337,100 @@ private fun CartPanel(
     ) {
         Column(
             modifier = Modifier
-                .fillMaxWidth()
+                .fillMaxSize()
                 .padding(18.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text("Warenkorb", style = MaterialTheme.typography.titleLarge)
+
             if (cartItems.isEmpty()) {
-                Text(
-                    "Noch keine Produkte ausgewählt",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Box(modifier = Modifier.weight(1f, fill = false)) {
+                    Text(
+                        "Noch keine Produkte ausgewählt",
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
             } else {
-                cartItems.forEach { item ->
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        shape = RoundedCornerShape(18.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(14.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
+                LazyColumn(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                    contentPadding = PaddingValues(bottom = 4.dp),
+                ) {
+                    items(cartItems, key = { it.product.id }) { item ->
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+                            shape = RoundedCornerShape(18.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                Text(item.product.name, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    item.lineTotalCents.toEuroString(),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                )
-                            }
                             Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                QtyButton(label = "-", onClick = { onDecrement(item.product.id) })
-                                Text(item.quantity.toString(), style = MaterialTheme.typography.titleMedium)
-                                QtyButton(label = "+", onClick = { onIncrement(item.product.id) })
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                                ) {
+                                    Text(item.product.name, style = MaterialTheme.typography.titleMedium)
+                                    Text(
+                                        item.lineTotalCents.toEuroString(),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    )
+                                }
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    QtyButton(label = "-", onClick = { onDecrement(item.product.id) })
+                                    Text(item.quantity.toString(), style = MaterialTheme.typography.titleMedium)
+                                    QtyButton(label = "+", onClick = { onIncrement(item.product.id) })
+                                }
                             }
                         }
                     }
                 }
+            }
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
                 OutlinedButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
                     Text("Warenkorb leeren")
                 }
-            }
-            Card(
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
-                shape = RoundedCornerShape(20.dp),
-                modifier = Modifier.fillMaxWidth(),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 18.dp, vertical = 16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primary),
+                    shape = RoundedCornerShape(20.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Text("Gesamtsumme", color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleMedium)
-                    Text(totalCents.toEuroString(), color = MaterialTheme.colorScheme.onPrimary, style = MaterialTheme.typography.titleLarge)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 18.dp, vertical = 16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Text(
+                            "Gesamtsumme",
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.titleMedium,
+                        )
+                        Text(
+                            totalCents.toEuroString(),
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            style = MaterialTheme.typography.titleLarge,
+                        )
+                    }
                 }
-            }
-            Button(
-                onClick = onComplete,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = cartItems.isNotEmpty(),
-            ) {
-                Text("Verkauf abschließen")
+                Button(
+                    onClick = onComplete,
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = cartItems.isNotEmpty(),
+                ) {
+                    Text("Verkauf abschließen")
+                }
             }
         }
     }
