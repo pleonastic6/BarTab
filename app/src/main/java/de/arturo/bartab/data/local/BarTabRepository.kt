@@ -113,6 +113,23 @@ class BarTabRepository(
         dao.updateProductActive(productId, active)
     }
 
+    suspend fun upsertProduct(product: Product) {
+        dao.insertProduct(
+            ProductEntity(
+                id = product.id,
+                name = product.name,
+                priceCents = product.priceCents,
+                categoryId = product.categoryId,
+                active = product.active,
+                sortOrder = product.sortOrder,
+            ),
+        )
+    }
+
+    suspend fun addCategory(category: Category) {
+        dao.insertCategory(CategoryEntity(category.id, category.name, category.sortOrder))
+    }
+
     suspend fun cancelSale(saleId: String) {
         dao.updateSaleStatus(
             saleId = saleId,

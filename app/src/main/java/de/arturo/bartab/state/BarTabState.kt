@@ -16,6 +16,7 @@ import de.arturo.bartab.data.model.SaleItem
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
+import java.util.UUID
 
 class BarTabViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = BarTabRepository(BarTabDatabase.getInstance(application).barTabDao())
@@ -86,6 +87,38 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setProductActive(productId: String, active: Boolean) {
         viewModelScope.launch { repository.setProductActive(productId, active) }
+    }
+
+    fun saveProduct(
+        existingId: String?,
+        name: String,
+        priceCents: Int,
+        categoryId: String,
+        active: Boolean,
+    ) {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank() || categoryId.isBlank()) return
+        val existing = products.firstOrNull { it.id == existingId }
+        val product = Product(
+            id = existing?.id ?: UUID.randomUUID().toString(),
+            name = trimmedName,
+            priceCents = priceCents,
+            categoryId = categoryId,
+            active = active,
+            sortOrder = existing?.sortOrder ?: (products.maxOfOrNull { it.sortOrder }?.plus(1) ?: 0),
+        )
+        viewModelScope.launch { repository.upsertProduct(product) }
+    }
+
+    fun addCategory(name: String) {
+        val trimmedName = name.trim()
+        if (trimmedName.isBlank()) return
+        val category = Category(
+            id = UUID.randomUUID().toString(),
+            name = trimmedName,
+            sortOrder = categories.maxOfOrNull { it.sortOrder }?.plus(1) ?: 0,
+        )
+        viewModelScope.launch { repository.addCategory(category) }
     }
 
     fun saleById(saleId: String): SaleRecord? = saleHistory.firstOrNull { it.id == saleId }
