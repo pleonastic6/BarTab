@@ -180,7 +180,7 @@ private fun CategoryRowCard(
             Card(
                 modifier = Modifier
                     .width(170.dp)
-                    .clickable(onClick = onOpenCategory),
+                    .clickable(onClick = onOpenCategory)
                     .heightIn(min = 92.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
