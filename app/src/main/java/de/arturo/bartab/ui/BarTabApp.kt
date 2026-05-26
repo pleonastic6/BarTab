@@ -89,9 +89,10 @@ fun BarTabApp() {
                                     restoreState = true
                                     popUpTo(navController.graph.startDestinationId) {
                                         saveState = true
-                                    }
-                                }
-                            },
+                    }
+                }
+            }
+        },
                         )
                     }
                 }
