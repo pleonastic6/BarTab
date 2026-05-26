@@ -66,7 +66,6 @@ fun BarTabApp() {
                         Checkbox(
                             checked = state.currentSaleIsStaff,
                             onCheckedChange = state::toggleCurrentSaleIsStaff,
-                            enabled = !state.isTodayArchived,
                         )
                         Text(
                             "Personal",
