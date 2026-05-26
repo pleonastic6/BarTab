@@ -1,7 +1,7 @@
 package de.arturo.bartab.ui.screens.sales
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -15,28 +15,32 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import de.arturo.bartab.data.model.Category
 import de.arturo.bartab.data.model.Product
 import de.arturo.bartab.data.model.SaleItem
 import de.arturo.bartab.state.BarTabViewModel
@@ -45,10 +49,8 @@ import de.arturo.bartab.ui.components.toEuroString
 @Composable
 fun SalesScreen(state: BarTabViewModel) {
     val categories = state.categories
-    val products = state.productsForSelectedCategory()
-    val quickAccessProducts = state.quickAccessProductsForSelectedCategory()
     val cartItems = state.cartItems
-    val selectedCategoryName = categories.firstOrNull { it.id == state.selectedCategoryId }?.name ?: "Kategorie"
+    var expandedCategory by remember { mutableStateOf<Category?>(null) }
 
     BoxWithConstraints(modifier = Modifier.fillMaxSize()) {
         val isWide = maxWidth >= 1000.dp
@@ -58,29 +60,18 @@ fun SalesScreen(state: BarTabViewModel) {
                 Row(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(start = 12.dp, top = 12.dp, end = 12.dp, bottom = 12.dp),
+                        .padding(12.dp),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
-                    CategoryRail(
-                        categories = categories.map { it.id to it.name },
-                        selectedCategoryId = state.selectedCategoryId,
-                        onSelect = { state.selectedCategoryId = it },
-                        modifier = Modifier.width(136.dp),
+                    CategoryHotbarList(
+                        categories = categories,
+                        state = state,
+                        onOpenCategory = { expandedCategory = it },
+                        modifier = Modifier.weight(1.25f),
                     )
-                    ProductSection(
-                        title = selectedCategoryName,
-                        subtitle = "Alle Getränke der Kategorie",
-                        products = products,
-                        cartItems = cartItems,
-                        onAddProduct = state::addProduct,
-                        modifier = Modifier.weight(1.2f),
-                        minCellSize = 168.dp,
-                    )
-                    RightActionPanel(
-                        quickAccessProducts = quickAccessProducts,
+                    CartPanel(
                         cartItems = cartItems,
                         totalCents = state.totalCents,
-                        onAddProduct = state::addProduct,
                         onIncrement = state::increment,
                         onDecrement = state::decrement,
                         onClear = state::clearCart,
@@ -97,24 +88,11 @@ fun SalesScreen(state: BarTabViewModel) {
                         .padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    CategoryRow(
-                        categories = categories.map { it.id to it.name },
-                        selectedCategoryId = state.selectedCategoryId,
-                        onSelect = { state.selectedCategoryId = it },
-                    )
-                    QuickAccessPanel(
-                        products = quickAccessProducts,
-                        onAddProduct = state::addProduct,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    ProductSection(
-                        title = selectedCategoryName,
-                        subtitle = "Alle Getränke der Kategorie",
-                        products = products,
-                        cartItems = cartItems,
-                        onAddProduct = state::addProduct,
+                    CategoryHotbarList(
+                        categories = categories,
+                        state = state,
+                        onOpenCategory = { expandedCategory = it },
                         modifier = Modifier.weight(1f),
-                        minCellSize = 132.dp,
                     )
                     CartPanel(
                         cartItems = cartItems,
@@ -129,81 +107,27 @@ fun SalesScreen(state: BarTabViewModel) {
             }
         }
     }
+
+    expandedCategory?.let { category ->
+        CategoryItemsDialog(
+            category = category,
+            products = state.activeProductsForCategory(category.id),
+            cartItems = cartItems,
+            onDismiss = { expandedCategory = null },
+            onAddProduct = state::addProduct,
+        )
+    }
 }
 
 @Composable
-private fun CategoryRail(
-    categories: List<Pair<String, String>>,
-    selectedCategoryId: String,
-    onSelect: (String) -> Unit,
+private fun CategoryHotbarList(
+    categories: List<Category>,
+    state: BarTabViewModel,
+    onOpenCategory: (Category) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Card(
-        modifier = modifier.fillMaxHeight(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxHeight()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            Text("Kategorien", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(8.dp))
-            categories.forEach { (id, label) ->
-                FilterChip(
-                    selected = selectedCategoryId == id,
-                    onClick = { onSelect(id) },
-                    label = { Text(label) },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary,
-                        selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                    ),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun CategoryRow(
-    categories: List<Pair<String, String>>,
-    selectedCategoryId: String,
-    onSelect: (String) -> Unit,
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        categories.forEach { (id, label) ->
-            FilterChip(
-                selected = selectedCategoryId == id,
-                onClick = { onSelect(id) },
-                label = { Text(label) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = MaterialTheme.colorScheme.primary,
-                    selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                ),
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProductSection(
-    title: String,
-    subtitle: String,
-    products: List<Product>,
-    cartItems: List<SaleItem>,
-    onAddProduct: (String) -> Unit,
-    modifier: Modifier,
-    minCellSize: Dp,
-) {
-    Card(
-        modifier = modifier,
+        modifier = modifier.fillMaxSize(),
         shape = RoundedCornerShape(24.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
     ) {
@@ -213,91 +137,139 @@ private fun ProductSection(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(title, style = MaterialTheme.typography.headlineMedium)
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Kategorien", style = MaterialTheme.typography.headlineMedium)
+            Text(
+                "Tippe auf eine Kategorie für alle Artikel. Rechts daneben liegen die Hotbar-Favoriten.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                items(categories, key = { it.id }) { category ->
+                    val hotbarProducts = state.quickAccessProductsForCategory(category.id)
+                    CategoryRowCard(
+                        category = category,
+                        hotbarProducts = hotbarProducts,
+                        onOpenCategory = { onOpenCategory(category) },
+                        onAddProduct = state::addProduct,
+                    )
+                }
             }
+        }
+    }
+}
+
+@Composable
+private fun CategoryRowCard(
+    category: Category,
+    hotbarProducts: List<Product>,
+    onOpenCategory: () -> Unit,
+    onAddProduct: (String) -> Unit,
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Card(
+                modifier = Modifier
+                    .width(170.dp)
+                    .clickable(onClick = onOpenCategory),
+                    .heightIn(min = 92.dp),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Text(category.name, style = MaterialTheme.typography.titleLarge)
+                    Text(
+                        "Alle Artikel anzeigen",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             LazyVerticalGrid(
-                columns = GridCells.Adaptive(minCellSize),
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                contentPadding = PaddingValues(bottom = 4.dp),
+                columns = GridCells.Fixed(5),
+                modifier = Modifier.weight(1f).heightIn(min = 92.dp, max = 160.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                userScrollEnabled = false,
+            ) {
+                items(hotbarProducts, key = { it.id }) { product ->
+                    HotbarTile(product = product, onClick = { onAddProduct(product.id) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HotbarTile(
+    product: Product,
+    onClick: () -> Unit,
+) {
+    Card(
+        onClick = onClick,
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        modifier = Modifier.heightIn(min = 92.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(10.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(product.name, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+            Text(
+                product.priceCents.toEuroString(),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryItemsDialog(
+    category: Category,
+    products: List<Product>,
+    cartItems: List<SaleItem>,
+    onDismiss: () -> Unit,
+    onAddProduct: (String) -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(category.name) },
+        text = {
+            LazyVerticalGrid(
+                columns = GridCells.Adaptive(140.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 220.dp, max = 520.dp),
             ) {
                 items(products, key = { it.id }) { product ->
                     val qty = cartItems.firstOrNull { it.product.id == product.id }?.quantity ?: 0
                     ProductTile(product = product, quantityInCart = qty, onClick = { onAddProduct(product.id) })
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun RightActionPanel(
-    quickAccessProducts: List<Product>,
-    cartItems: List<SaleItem>,
-    totalCents: Int,
-    onAddProduct: (String) -> Unit,
-    onIncrement: (String) -> Unit,
-    onDecrement: (String) -> Unit,
-    onClear: () -> Unit,
-    onComplete: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        QuickAccessPanel(products = quickAccessProducts, onAddProduct = onAddProduct, modifier = Modifier.fillMaxWidth())
-        CartPanel(
-            cartItems = cartItems,
-            totalCents = totalCents,
-            onIncrement = onIncrement,
-            onDecrement = onDecrement,
-            onClear = onClear,
-            onComplete = onComplete,
-            modifier = Modifier.fillMaxWidth().weight(1f),
-        )
-    }
-}
-
-@Composable
-private fun QuickAccessPanel(
-    products: List<Product>,
-    onAddProduct: (String) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Card(
-        modifier = modifier,
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("Hotbar", style = MaterialTheme.typography.titleLarge)
-            if (products.isEmpty()) {
-                Text("Keine Hotbar-Produkte in dieser Kategorie", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            } else {
-                products.forEach { product ->
-                    OutlinedButton(
-                        onClick = { onAddProduct(product.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            Text(product.name)
-                            Text(product.priceCents.toEuroString(), color = MaterialTheme.colorScheme.primary)
-                        }
-                    }
-                }
-            }
-        }
-    }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) { Text("Schließen") }
+        },
+    )
 }
 
 @Composable

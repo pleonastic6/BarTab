@@ -30,18 +30,12 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     var saleHistory by mutableStateOf<List<SaleRecord>>(emptyList())
         private set
 
-    var selectedCategoryId by mutableStateOf("")
     private val cartMap = mutableStateMapOf<String, Int>()
 
     init {
         viewModelScope.launch { repository.seedIfEmpty() }
         viewModelScope.launch {
-            repository.observeCategories().collectLatest { newCategories ->
-                categories = newCategories
-                if (selectedCategoryId.isBlank()) {
-                    selectedCategoryId = newCategories.firstOrNull()?.id.orEmpty()
-                }
-            }
+            repository.observeCategories().collectLatest { categories = it }
         }
         viewModelScope.launch {
             repository.observeProducts().collectLatest { products = it }
@@ -123,11 +117,11 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
     fun exportFileName(): String = "bartab-export-${LocalDate.now()}.csv"
 
-    fun productsForSelectedCategory(): List<Product> =
-        products.filter { it.categoryId == selectedCategoryId && it.active }.sortedBy { it.sortOrder }
+    fun activeProductsForCategory(categoryId: String): List<Product> =
+        products.filter { it.categoryId == categoryId && it.active }.sortedBy { it.sortOrder }
 
-    fun quickAccessProductsForSelectedCategory(): List<Product> {
-        val inCategory = productsForSelectedCategory()
+    fun quickAccessProductsForCategory(categoryId: String): List<Product> {
+        val inCategory = activeProductsForCategory(categoryId)
         val favorites = inCategory.filter { it.quickAccess }.take(5)
         return if (favorites.isNotEmpty()) favorites else inCategory.take(5)
     }
@@ -208,10 +202,6 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         if (nextCart.isEmpty()) return false
         cartMap.clear()
         nextCart.forEach { (productId, quantity) -> cartMap[productId] = quantity }
-        val firstProduct = products.firstOrNull { it.id == nextCart.keys.first() }
-        if (firstProduct != null) {
-            selectedCategoryId = firstProduct.categoryId
-        }
         return true
     }
 
