@@ -112,4 +112,12 @@ class BarTabRepository(
     suspend fun setProductActive(productId: String, active: Boolean) {
         dao.updateProductActive(productId, active)
     }
+
+    suspend fun cancelSale(saleId: String) {
+        dao.updateSaleStatus(
+            saleId = saleId,
+            status = SaleStatus.CANCELLED.name,
+            updatedAtEpochMillis = System.currentTimeMillis(),
+        )
+    }
 }

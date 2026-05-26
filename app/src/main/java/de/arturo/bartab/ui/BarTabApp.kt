@@ -10,13 +10,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import de.arturo.bartab.state.BarTabViewModel
 import de.arturo.bartab.ui.navigation.BarTabDestination
 import de.arturo.bartab.ui.screens.history.HistoryScreen
+import de.arturo.bartab.ui.screens.history.SaleDetailScreen
 import de.arturo.bartab.ui.screens.products.ProductsScreen
 import de.arturo.bartab.ui.screens.sales.SalesScreen
 
@@ -60,8 +63,25 @@ fun BarTabApp() {
             modifier = Modifier.padding(innerPadding),
         ) {
             composable(BarTabDestination.Sales.route) { SalesScreen(state) }
-            composable(BarTabDestination.History.route) { HistoryScreen(state) }
+            composable(BarTabDestination.History.route) {
+                HistoryScreen(
+                    state = state,
+                    onSaleClick = { saleId -> navController.navigate(BarTabDestination.SaleDetail.routeFor(saleId)) },
+                )
+            }
             composable(BarTabDestination.Products.route) { ProductsScreen(state) }
+            composable(
+                route = BarTabDestination.SaleDetail.route,
+                arguments = listOf(navArgument("saleId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val saleId = backStackEntry.arguments?.getString("saleId").orEmpty()
+                SaleDetailScreen(
+                    sale = state.saleById(saleId),
+                    onBack = { navController.popBackStack() },
+                    onLoadIntoCart = { state.loadSaleIntoCart(it) },
+                    onCancelSale = { state.cancelSale(it) },
+                )
+            }
         }
     }
 }

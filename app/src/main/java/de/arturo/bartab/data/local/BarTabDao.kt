@@ -34,6 +34,9 @@ interface BarTabDao {
     @Query("UPDATE products SET active = :active WHERE id = :productId")
     suspend fun updateProductActive(productId: String, active: Boolean)
 
+    @Query("UPDATE sales SET status = :status, updatedAtEpochMillis = :updatedAtEpochMillis WHERE id = :saleId")
+    suspend fun updateSaleStatus(saleId: String, status: String, updatedAtEpochMillis: Long)
+
     @Query("SELECT COUNT(*) FROM categories")
     suspend fun categoryCount(): Int
 }

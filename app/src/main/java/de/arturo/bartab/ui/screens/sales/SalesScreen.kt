@@ -19,11 +19,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import de.arturo.bartab.state.BarTabState
+import de.arturo.bartab.state.BarTabViewModel
 import de.arturo.bartab.ui.components.toEuroString
 
 @Composable
-fun SalesScreen(state: BarTabState) {
+fun SalesScreen(state: BarTabViewModel) {
     val categories = state.categories
     val products = state.productsForSelectedCategory()
     val cartItems = state.cartItems
@@ -49,7 +49,7 @@ fun SalesScreen(state: BarTabState) {
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            items(products) { product ->
+            items(products, key = { it.id }) { product ->
                 Card(onClick = { state.addProduct(product.id) }) {
                     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(product.name, fontWeight = FontWeight.Bold)
@@ -81,6 +81,12 @@ fun SalesScreen(state: BarTabState) {
                                 OutlinedButton(onClick = { state.increment(item.product.id) }) { Text("+") }
                             }
                         }
+                    }
+                    OutlinedButton(
+                        onClick = { state.clearCart() },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("Warenkorb leeren")
                     }
                 }
                 Text("Summe: ${state.totalCents.toEuroString()}", fontWeight = FontWeight.Bold)

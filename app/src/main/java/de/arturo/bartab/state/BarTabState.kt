@@ -15,10 +15,7 @@ import de.arturo.bartab.data.model.Product
 import de.arturo.bartab.data.model.SaleItem
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
-import java.text.NumberFormat
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
-import java.util.Locale
 
 class BarTabViewModel(application: Application) : AndroidViewModel(application) {
     private val repository = BarTabRepository(BarTabDatabase.getInstance(application).barTabDao())
@@ -74,6 +71,10 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         if (current <= 1) cartMap.remove(productId) else cartMap[productId] = current - 1
     }
 
+    fun clearCart() {
+        cartMap.clear()
+    }
+
     fun completeSale() {
         val items = cartItems
         if (items.isEmpty()) return
@@ -85,6 +86,31 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
     fun setProductActive(productId: String, active: Boolean) {
         viewModelScope.launch { repository.setProductActive(productId, active) }
+    }
+
+    fun saleById(saleId: String): SaleRecord? = saleHistory.firstOrNull { it.id == saleId }
+
+    fun loadSaleIntoCart(saleId: String): Boolean {
+        val sale = saleById(saleId) ?: return false
+        val nextCart = linkedMapOf<String, Int>()
+        sale.items.forEach { item ->
+            val currentProduct = products.firstOrNull { it.id == item.product.id && it.active }
+            if (currentProduct != null) {
+                nextCart[currentProduct.id] = (nextCart[currentProduct.id] ?: 0) + item.quantity
+            }
+        }
+        if (nextCart.isEmpty()) return false
+        cartMap.clear()
+        nextCart.forEach { (productId, quantity) -> cartMap[productId] = quantity }
+        val firstProduct = products.firstOrNull { it.id == nextCart.keys.first() }
+        if (firstProduct != null) {
+            selectedCategoryId = firstProduct.categoryId
+        }
+        return true
+    }
+
+    fun cancelSale(saleId: String) {
+        viewModelScope.launch { repository.cancelSale(saleId) }
     }
 
     companion object {
@@ -100,19 +126,9 @@ data class SaleRecord(
     val status: SaleStatus,
 ) {
     val totalCents: Int = items.sumOf { it.lineTotalCents }
-
-    fun summary(): String {
-        val time = createdAt.format(DateTimeFormatter.ofPattern("HH:mm"))
-        return "$time · ${totalCents.toEuroString()} · ${status.label}"
-    }
 }
 
 enum class SaleStatus(val label: String) {
     COMPLETED("abgeschlossen"),
     CANCELLED("storniert"),
-}
-
-private fun Int.toEuroString(): String {
-    val format = NumberFormat.getCurrencyInstance(Locale.GERMANY)
-    return format.format(this / 100.0)
 }
