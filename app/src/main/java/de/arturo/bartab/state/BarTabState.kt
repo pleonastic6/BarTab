@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 import java.util.UUID
 
 class BarTabViewModel(application: Application) : AndroidViewModel(application) {
@@ -59,10 +60,14 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     val totalCents: Int
         get() = cartItems.sumOf { it.lineTotalCents }
 
-    val todaySummary: DaySummary
+    private val todaysSales: List<SaleRecord>
         get() {
             val today = LocalDate.now()
-            val todaysSales = saleHistory.filter { it.createdAt.toLocalDate() == today }
+            return saleHistory.filter { it.createdAt.toLocalDate() == today }
+        }
+
+    val todaySummary: DaySummary
+        get() {
             val completedSales = todaysSales.filter { it.status == SaleStatus.COMPLETED }
             val cancelledSales = todaysSales.filter { it.status == SaleStatus.CANCELLED }
             return DaySummary(
@@ -73,21 +78,50 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         }
 
     val todayProductSummaries: List<ProductSalesSummary>
-        get() {
-            val today = LocalDate.now()
-            return saleHistory
-                .filter { it.createdAt.toLocalDate() == today && it.status == SaleStatus.COMPLETED }
-                .flatMap { it.items }
-                .groupBy { it.product.name }
-                .map { (productName, items) ->
-                    ProductSalesSummary(
-                        productName = productName,
-                        quantity = items.sumOf { it.quantity },
-                        revenueCents = items.sumOf { it.lineTotalCents },
-                    )
-                }
-                .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
+        get() = todaysSales
+            .filter { it.status == SaleStatus.COMPLETED }
+            .flatMap { it.items }
+            .groupBy { it.product.name }
+            .map { (productName, items) ->
+                ProductSalesSummary(
+                    productName = productName,
+                    quantity = items.sumOf { it.quantity },
+                    revenueCents = items.sumOf { it.lineTotalCents },
+                )
+            }
+            .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
+
+    fun buildTodayCsv(): String {
+        val summary = todaySummary
+        val timeFormat = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        val builder = StringBuilder()
+        builder.appendLine("BarTab Tagesexport;${LocalDate.now()}")
+        builder.appendLine("Umsatz;${summary.revenueCents.toEuroDecimal()}")
+        builder.appendLine("Verkäufe;${summary.completedSalesCount}")
+        builder.appendLine("Stornos;${summary.cancelledSalesCount}")
+        builder.appendLine()
+        builder.appendLine("sale_id;zeit;status;produkt;menge;einzelpreis_eur;zeilensumme_eur")
+
+        todaysSales.forEach { sale ->
+            sale.items.forEach { item ->
+                builder.appendLine(
+                    listOf(
+                        sale.id,
+                        sale.createdAt.format(timeFormat),
+                        sale.status.name,
+                        item.product.name.csvEscape(),
+                        item.quantity.toString(),
+                        item.product.priceCents.toEuroDecimal(),
+                        item.lineTotalCents.toEuroDecimal(),
+                    ).joinToString(";"),
+                )
+            }
         }
+
+        return builder.toString()
+    }
+
+    fun exportFileName(): String = "bartab-export-${LocalDate.now()}.csv"
 
     fun productsForSelectedCategory(): List<Product> =
         products.filter { it.categoryId == selectedCategoryId && it.active }.sortedBy { it.sortOrder }
@@ -208,3 +242,8 @@ enum class SaleStatus(val label: String) {
     COMPLETED("abgeschlossen"),
     CANCELLED("storniert"),
 }
+
+private fun Int.toEuroDecimal(): String = "%.2f".format(this / 100.0).replace('.', ',')
+
+private fun String.csvEscape(): String =
+    '"' + replace("\"", "\"\"") + '"'
