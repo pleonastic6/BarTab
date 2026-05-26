@@ -17,11 +17,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import de.arturo.bartab.data.model.SampleData
+import de.arturo.bartab.state.BarTabViewModel
 import de.arturo.bartab.ui.components.toEuroString
 
 @Composable
-fun ProductsScreen() {
+fun ProductsScreen(state: BarTabViewModel) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -33,7 +33,7 @@ fun ProductsScreen() {
             Button(onClick = { /* next step: add/edit product */ }) { Text("Neu") }
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            items(SampleData.products) { product ->
+            items(state.products) { product ->
                 Card(modifier = Modifier.fillMaxWidth()) {
                     Row(
                         modifier = Modifier
@@ -44,9 +44,12 @@ fun ProductsScreen() {
                         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text(product.name, fontWeight = FontWeight.SemiBold)
                             Text(product.priceCents.toEuroString())
-                            Text("Kategorie: ${SampleData.categories.first { it.id == product.categoryId }.name}")
+                            Text("Kategorie: ${state.categories.firstOrNull { it.id == product.categoryId }?.name ?: "-"}")
                         }
-                        Switch(checked = product.active, onCheckedChange = { })
+                        Switch(
+                            checked = product.active,
+                            onCheckedChange = { checked -> state.setProductActive(product.id, checked) },
+                        )
                     }
                 }
             }
