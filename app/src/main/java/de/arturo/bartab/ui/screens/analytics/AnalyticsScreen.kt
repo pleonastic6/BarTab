@@ -63,9 +63,8 @@ fun AnalyticsScreen(
                 OutlinedButton(
                     onClick = state::archiveToday,
                     modifier = Modifier.weight(1f),
-                    enabled = !state.isTodayArchived,
                 ) {
-                    Text(if (state.isTodayArchived) "Tag archiviert" else "Tagesabschluss")
+                    Text(if (state.isTodayArchived) "Tagesabschluss aktualisieren" else "Tagesabschluss")
                 }
             }
         }

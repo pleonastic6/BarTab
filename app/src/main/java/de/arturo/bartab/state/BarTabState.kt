@@ -106,9 +106,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     fun staffDrinksForArchivedDay(dayKey: String): List<ProductSalesSummary> = productSummariesForDay(dayKey, staff = true)
 
     fun archiveToday() {
-        if (isTodayArchived) return
         viewModelScope.launch { repository.archiveDay(todayKey, todaySummary) }
-        clearCart()
     }
 
     fun buildTodayCsv(): String = buildCsvForDay(todayKey)
@@ -183,7 +181,6 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun addProduct(productId: String) {
-        if (isTodayArchived) return
         cartMap[productId] = (cartMap[productId] ?: 0) + 1
     }
 
@@ -200,7 +197,6 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun completeSale() {
-        if (isTodayArchived) return
         val items = cartItems
         if (items.isEmpty()) return
         val isStaff = currentSaleIsStaff
@@ -212,7 +208,6 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun toggleCurrentSaleIsStaff(value: Boolean) {
-        if (isTodayArchived) return
         currentSaleIsStaff = value
     }
 
@@ -257,7 +252,6 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     fun saleById(saleId: String): SaleRecord? = saleHistory.firstOrNull { it.id == saleId }
 
     fun loadSaleIntoCart(saleId: String): Boolean {
-        if (isTodayArchived) return false
         val sale = saleById(saleId) ?: return false
         val nextCart = linkedMapOf<String, Int>()
         sale.items.forEach { item ->
