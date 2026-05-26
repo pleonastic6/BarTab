@@ -126,6 +126,12 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     fun productsForSelectedCategory(): List<Product> =
         products.filter { it.categoryId == selectedCategoryId && it.active }.sortedBy { it.sortOrder }
 
+    fun quickAccessProductsForSelectedCategory(): List<Product> {
+        val inCategory = productsForSelectedCategory()
+        val favorites = inCategory.filter { it.quickAccess }.take(5)
+        return if (favorites.isNotEmpty()) favorites else inCategory.take(5)
+    }
+
     fun addProduct(productId: String) {
         cartMap[productId] = (cartMap[productId] ?: 0) + 1
     }
@@ -160,6 +166,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         priceCents: Int,
         categoryId: String,
         active: Boolean,
+        quickAccess: Boolean,
     ) {
         val trimmedName = name.trim()
         if (trimmedName.isBlank() || categoryId.isBlank()) return
@@ -170,6 +177,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
             priceCents = priceCents,
             categoryId = categoryId,
             active = active,
+            quickAccess = quickAccess,
             sortOrder = existing?.sortOrder ?: (products.maxOfOrNull { it.sortOrder }?.plus(1) ?: 0),
         )
         viewModelScope.launch { repository.upsertProduct(product) }

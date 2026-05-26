@@ -12,6 +12,7 @@ data class Product(
     val priceCents: Int,
     val categoryId: String,
     val active: Boolean = true,
+    val quickAccess: Boolean = false,
     val sortOrder: Int = 0,
 )
 

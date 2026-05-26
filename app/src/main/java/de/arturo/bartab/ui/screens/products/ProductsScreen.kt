@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -24,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import de.arturo.bartab.data.model.Product
@@ -66,6 +66,9 @@ fun ProductsScreen(state: BarTabViewModel) {
                             Text(product.name, fontWeight = FontWeight.SemiBold)
                             Text(product.priceCents.toEuroString())
                             Text("Kategorie: ${state.categories.firstOrNull { it.id == product.categoryId }?.name ?: "-"}")
+                            if (product.quickAccess) {
+                                Text("Hotbar aktiv", color = MaterialTheme.colorScheme.primary)
+                            }
                         }
                         Switch(
                             checked = product.active,
@@ -83,8 +86,8 @@ fun ProductsScreen(state: BarTabViewModel) {
             categories = state.categories,
             initialProduct = null,
             onDismiss = { showCreateDialog = false },
-            onSave = { name, priceCents, categoryId, active ->
-                state.saveProduct(null, name, priceCents, categoryId, active)
+            onSave = { name, priceCents, categoryId, active, quickAccess ->
+                state.saveProduct(null, name, priceCents, categoryId, active, quickAccess)
                 showCreateDialog = false
             },
         )
@@ -96,8 +99,8 @@ fun ProductsScreen(state: BarTabViewModel) {
             categories = state.categories,
             initialProduct = product,
             onDismiss = { editingProduct = null },
-            onSave = { name, priceCents, categoryId, active ->
-                state.saveProduct(product.id, name, priceCents, categoryId, active)
+            onSave = { name, priceCents, categoryId, active, quickAccess ->
+                state.saveProduct(product.id, name, priceCents, categoryId, active, quickAccess)
                 editingProduct = null
             },
         )
@@ -120,7 +123,7 @@ private fun ProductDialog(
     categories: List<de.arturo.bartab.data.model.Category>,
     initialProduct: Product?,
     onDismiss: () -> Unit,
-    onSave: (name: String, priceCents: Int, categoryId: String, active: Boolean) -> Unit,
+    onSave: (name: String, priceCents: Int, categoryId: String, active: Boolean, quickAccess: Boolean) -> Unit,
 ) {
     var name by remember(initialProduct) { mutableStateOf(initialProduct?.name.orEmpty()) }
     var priceEuros by remember(initialProduct) {
@@ -132,6 +135,7 @@ private fun ProductDialog(
         mutableStateOf(initialProduct?.categoryId ?: categories.firstOrNull()?.id.orEmpty())
     }
     var active by remember(initialProduct) { mutableStateOf(initialProduct?.active ?: true) }
+    var quickAccess by remember(initialProduct) { mutableStateOf(initialProduct?.quickAccess ?: false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -164,6 +168,10 @@ private fun ProductDialog(
                     }
                 }
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text("In Hotbar", modifier = Modifier.padding(top = 12.dp))
+                    Switch(checked = quickAccess, onCheckedChange = { quickAccess = it })
+                }
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text("Aktiv", modifier = Modifier.padding(top = 12.dp))
                     Switch(checked = active, onCheckedChange = { active = it })
                 }
@@ -174,7 +182,7 @@ private fun ProductDialog(
                 onClick = {
                     val normalized = priceEuros.replace(',', '.')
                     val cents = (normalized.toDoubleOrNull()?.times(100))?.toInt() ?: return@Button
-                    onSave(name, cents, categoryId, active)
+                    onSave(name, cents, categoryId, active, quickAccess)
                 },
                 enabled = name.isNotBlank() && categoryId.isNotBlank() && categories.isNotEmpty(),
             ) {

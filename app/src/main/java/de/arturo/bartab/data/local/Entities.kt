@@ -32,6 +32,7 @@ data class ProductEntity(
     val priceCents: Int,
     val categoryId: String,
     val active: Boolean,
+    val quickAccess: Boolean,
     val sortOrder: Int,
 )
 

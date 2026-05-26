@@ -1,14 +1,23 @@
 package de.arturo.bartab.ui
 
 import android.app.Application
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -36,54 +45,70 @@ fun BarTabApp() {
         BarTabDestination.Products,
     )
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
+    var menuExpanded by remember { mutableStateOf(false) }
 
-    Scaffold(
-        bottomBar = {
-            NavigationBar {
-                destinations.forEach { destination ->
-                    NavigationBarItem(
-                        selected = currentRoute == destination.route,
-                        onClick = {
-                            navController.navigate(destination.route) {
-                                launchSingleTop = true
-                                restoreState = true
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
-                                }
-                            }
-                        },
-                        icon = { Text(destination.label.take(1)) },
-                        label = { Text(destination.label) },
+    Scaffold { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            NavHost(
+                navController = navController,
+                startDestination = BarTabDestination.Sales.route,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                composable(BarTabDestination.Sales.route) { SalesScreen(state) }
+                composable(BarTabDestination.History.route) {
+                    HistoryScreen(
+                        state = state,
+                        onSaleClick = { saleId -> navController.navigate(BarTabDestination.SaleDetail.routeFor(saleId)) },
+                    )
+                }
+                composable(BarTabDestination.Analytics.route) { AnalyticsScreen(state) }
+                composable(BarTabDestination.Products.route) { ProductsScreen(state) }
+                composable(
+                    route = BarTabDestination.SaleDetail.route,
+                    arguments = listOf(navArgument("saleId") { type = NavType.StringType }),
+                ) { backStackEntry ->
+                    val saleId = backStackEntry.arguments?.getString("saleId").orEmpty()
+                    SaleDetailScreen(
+                        sale = state.saleById(saleId),
+                        onBack = { navController.popBackStack() },
+                        onLoadIntoCart = { state.loadSaleIntoCart(it) },
+                        onCancelSale = { state.cancelSale(it) },
                     )
                 }
             }
-        },
-    ) { innerPadding ->
-        NavHost(
-            navController = navController,
-            startDestination = BarTabDestination.Sales.route,
-            modifier = Modifier.padding(innerPadding),
-        ) {
-            composable(BarTabDestination.Sales.route) { SalesScreen(state) }
-            composable(BarTabDestination.History.route) {
-                HistoryScreen(
-                    state = state,
-                    onSaleClick = { saleId -> navController.navigate(BarTabDestination.SaleDetail.routeFor(saleId)) },
-                )
-            }
-            composable(BarTabDestination.Analytics.route) { AnalyticsScreen(state) }
-            composable(BarTabDestination.Products.route) { ProductsScreen(state) }
-            composable(
-                route = BarTabDestination.SaleDetail.route,
-                arguments = listOf(navArgument("saleId") { type = NavType.StringType }),
-            ) { backStackEntry ->
-                val saleId = backStackEntry.arguments?.getString("saleId").orEmpty()
-                SaleDetailScreen(
-                    sale = state.saleById(saleId),
-                    onBack = { navController.popBackStack() },
-                    onLoadIntoCart = { state.loadSaleIntoCart(it) },
-                    onCancelSale = { state.cancelSale(it) },
-                )
+
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(12.dp),
+            ) {
+                OutlinedButton(onClick = { menuExpanded = true }) {
+                    Text("☰")
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    destinations.forEach { destination ->
+                        DropdownMenuItem(
+                            text = {
+                                val suffix = if (currentRoute == destination.route) " •" else ""
+                                Text(destination.label + suffix)
+                            },
+                            onClick = {
+                                menuExpanded = false
+                                navController.navigate(destination.route) {
+                                    launchSingleTop = true
+                                    restoreState = true
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                }
+                            },
+                        )
+                    }
+                }
             }
         }
     }

@@ -28,6 +28,7 @@ class BarTabRepository(
                 priceCents = entity.priceCents,
                 categoryId = entity.categoryId,
                 active = entity.active,
+                quickAccess = entity.quickAccess,
                 sortOrder = entity.sortOrder,
             )
         }
@@ -73,6 +74,7 @@ class BarTabRepository(
                     priceCents = it.priceCents,
                     categoryId = it.categoryId,
                     active = it.active,
+                    quickAccess = it.quickAccess,
                     sortOrder = it.sortOrder,
                 )
             },
@@ -121,6 +123,7 @@ class BarTabRepository(
                 priceCents = product.priceCents,
                 categoryId = product.categoryId,
                 active = product.active,
+                quickAccess = product.quickAccess,
                 sortOrder = product.sortOrder,
             ),
         )
