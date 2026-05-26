@@ -43,14 +43,18 @@ fun HistoryScreen(
                             .clickable { onSaleClick(sale.id) },
                     ) {
                         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            val staffSuffix = if (sale.isStaff) " · Personal" else ""
                             Text(
-                                text = "${sale.createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm"))} · ${sale.status.label}",
+                                text = "${sale.createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm"))} · ${sale.status.label}$staffSuffix",
                                 fontWeight = FontWeight.SemiBold,
                             )
                             sale.items.forEach { item ->
                                 Text("${item.quantity}× ${item.product.name} · ${item.lineTotalCents.toEuroString()}")
                             }
-                            Text("Summe: ${sale.totalCents.toEuroString()}", fontWeight = FontWeight.Bold)
+                            Text(
+                                if (sale.isStaff) "Dokumentiert als Personalgetränk" else "Summe: ${sale.totalCents.toEuroString()}",
+                                fontWeight = FontWeight.Bold,
+                            )
                         }
                     }
                 }

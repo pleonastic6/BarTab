@@ -1,14 +1,17 @@
 package de.arturo.bartab.ui
 
 import android.app.Application
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -47,46 +50,29 @@ fun BarTabApp() {
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     var menuExpanded by remember { mutableStateOf(false) }
 
-    Scaffold { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            NavHost(
-                navController = navController,
-                startDestination = BarTabDestination.Sales.route,
-                modifier = Modifier.fillMaxSize(),
-            ) {
-                composable(BarTabDestination.Sales.route) { SalesScreen(state) }
-                composable(BarTabDestination.History.route) {
-                    HistoryScreen(
-                        state = state,
-                        onSaleClick = { saleId -> navController.navigate(BarTabDestination.SaleDetail.routeFor(saleId)) },
-                    )
-                }
-                composable(BarTabDestination.Analytics.route) { AnalyticsScreen(state) }
-                composable(BarTabDestination.Products.route) { ProductsScreen(state) }
-                composable(
-                    route = BarTabDestination.SaleDetail.route,
-                    arguments = listOf(navArgument("saleId") { type = NavType.StringType }),
-                ) { backStackEntry ->
-                    val saleId = backStackEntry.arguments?.getString("saleId").orEmpty()
-                    SaleDetailScreen(
-                        sale = state.saleById(saleId),
-                        onBack = { navController.popBackStack() },
-                        onLoadIntoCart = { state.loadSaleIntoCart(it) },
-                        onCancelSale = { state.cancelSale(it) },
-                    )
-                }
-            }
-
-            Box(
+    Scaffold(
+        topBar = {
+            Row(
                 modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(12.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                OutlinedButton(onClick = { menuExpanded = true }) {
+                if (currentRoute == BarTabDestination.Sales.route) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = state.currentSaleIsStaff,
+                            onCheckedChange = state::toggleCurrentSaleIsStaff,
+                        )
+                        Text(
+                            "Personal",
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(end = 8.dp),
+                        )
+                    }
+                }
+                TextButton(onClick = { menuExpanded = true }) {
                     Text("☰")
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
@@ -109,6 +95,34 @@ fun BarTabApp() {
                         )
                     }
                 }
+            }
+        },
+    ) { innerPadding ->
+        NavHost(
+            navController = navController,
+            startDestination = BarTabDestination.Sales.route,
+            modifier = Modifier.padding(innerPadding),
+        ) {
+            composable(BarTabDestination.Sales.route) { SalesScreen(state) }
+            composable(BarTabDestination.History.route) {
+                HistoryScreen(
+                    state = state,
+                    onSaleClick = { saleId -> navController.navigate(BarTabDestination.SaleDetail.routeFor(saleId)) },
+                )
+            }
+            composable(BarTabDestination.Analytics.route) { AnalyticsScreen(state) }
+            composable(BarTabDestination.Products.route) { ProductsScreen(state) }
+            composable(
+                route = BarTabDestination.SaleDetail.route,
+                arguments = listOf(navArgument("saleId") { type = NavType.StringType }),
+            ) { backStackEntry ->
+                val saleId = backStackEntry.arguments?.getString("saleId").orEmpty()
+                SaleDetailScreen(
+                    sale = state.saleById(saleId),
+                    onBack = { navController.popBackStack() },
+                    onLoadIntoCart = { state.loadSaleIntoCart(it) },
+                    onCancelSale = { state.cancelSale(it) },
+                )
             }
         }
     }

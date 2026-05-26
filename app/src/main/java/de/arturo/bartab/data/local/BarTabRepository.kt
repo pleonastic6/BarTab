@@ -57,15 +57,14 @@ class BarTabRepository(
                 },
                 status = runCatching { SaleStatus.valueOf(saleWithItems.sale.status) }
                     .getOrDefault(SaleStatus.COMPLETED),
+                isStaff = saleWithItems.sale.isStaff,
             )
         }
     }
 
     suspend fun seedIfEmpty() {
         if (dao.categoryCount() > 0) return
-        dao.insertCategories(
-            SampleData.categories.map { CategoryEntity(it.id, it.name, it.sortOrder) },
-        )
+        dao.insertCategories(SampleData.categories.map { CategoryEntity(it.id, it.name, it.sortOrder) })
         dao.insertProducts(
             SampleData.products.map {
                 ProductEntity(
@@ -81,7 +80,7 @@ class BarTabRepository(
         )
     }
 
-    suspend fun completeSale(items: List<SaleItem>) {
+    suspend fun completeSale(items: List<SaleItem>, isStaff: Boolean) {
         if (items.isEmpty()) return
         val saleId = UUID.randomUUID().toString()
         val now = System.currentTimeMillis()
@@ -94,6 +93,7 @@ class BarTabRepository(
                 updatedAtEpochMillis = now,
                 status = SaleStatus.COMPLETED.name,
                 totalCents = total,
+                isStaff = isStaff,
                 note = null,
             ),
         )

@@ -43,6 +43,7 @@ data class SaleEntity(
     val updatedAtEpochMillis: Long,
     val status: String,
     val totalCents: Int,
+    val isStaff: Boolean,
     val note: String?,
 )
 

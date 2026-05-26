@@ -53,13 +53,14 @@ fun AnalyticsScreen(state: BarTabViewModel) {
                 Text("Heute", fontWeight = FontWeight.Bold)
                 SummaryRow("Umsatz", summary.revenueCents.toEuroString())
                 SummaryRow("Verkäufe", summary.completedSalesCount.toString())
+                SummaryRow("Personalgetränke", summary.staffSalesCount.toString())
                 SummaryRow("Stornos", summary.cancelledSalesCount.toString())
             }
         }
 
         Text("Produkte heute", fontWeight = FontWeight.Bold)
         if (productSummaries.isEmpty()) {
-            Text("Heute wurden noch keine Verkäufe abgeschlossen")
+            Text("Heute wurden noch keine bezahlten Verkäufe abgeschlossen")
         } else {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 items(productSummaries, key = { it.productName }) { item ->

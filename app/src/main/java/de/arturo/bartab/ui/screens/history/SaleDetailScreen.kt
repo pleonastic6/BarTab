@@ -51,13 +51,19 @@ fun SaleDetailScreen(
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 Text(sale.createdAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm")), fontWeight = FontWeight.SemiBold)
                 Text("Status: ${sale.status.label}")
+                if (sale.isStaff) {
+                    Text("Personalgetränk", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
+                }
                 sale.items.forEach { item ->
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                         Text("${item.quantity}× ${item.product.name}")
                         Text(item.lineTotalCents.toEuroString())
                     }
                 }
-                Text("Summe: ${sale.totalCents.toEuroString()}", fontWeight = FontWeight.Bold)
+                Text(
+                    if (sale.isStaff) "Dokumentiert ohne Umsatz" else "Summe: ${sale.totalCents.toEuroString()}",
+                    fontWeight = FontWeight.Bold,
+                )
             }
         }
         Button(

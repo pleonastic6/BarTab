@@ -29,20 +29,15 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         private set
     var saleHistory by mutableStateOf<List<SaleRecord>>(emptyList())
         private set
+    var currentSaleIsStaff by mutableStateOf(false)
 
     private val cartMap = mutableStateMapOf<String, Int>()
 
     init {
         viewModelScope.launch { repository.seedIfEmpty() }
-        viewModelScope.launch {
-            repository.observeCategories().collectLatest { categories = it }
-        }
-        viewModelScope.launch {
-            repository.observeProducts().collectLatest { products = it }
-        }
-        viewModelScope.launch {
-            repository.observeSales().collectLatest { saleHistory = it }
-        }
+        viewModelScope.launch { repository.observeCategories().collectLatest { categories = it } }
+        viewModelScope.launch { repository.observeProducts().collectLatest { products = it } }
+        viewModelScope.launch { repository.observeSales().collectLatest { saleHistory = it } }
     }
 
     val cartItems: List<SaleItem>
@@ -62,18 +57,20 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
     val todaySummary: DaySummary
         get() {
-            val completedSales = todaysSales.filter { it.status == SaleStatus.COMPLETED }
+            val completedSales = todaysSales.filter { it.status == SaleStatus.COMPLETED && !it.isStaff }
             val cancelledSales = todaysSales.filter { it.status == SaleStatus.CANCELLED }
+            val staffSales = todaysSales.filter { it.status == SaleStatus.COMPLETED && it.isStaff }
             return DaySummary(
                 completedSalesCount = completedSales.size,
                 cancelledSalesCount = cancelledSales.size,
+                staffSalesCount = staffSales.size,
                 revenueCents = completedSales.sumOf { it.totalCents },
             )
         }
 
     val todayProductSummaries: List<ProductSalesSummary>
         get() = todaysSales
-            .filter { it.status == SaleStatus.COMPLETED }
+            .filter { it.status == SaleStatus.COMPLETED && !it.isStaff }
             .flatMap { it.items }
             .groupBy { it.product.name }
             .map { (productName, items) ->
@@ -92,9 +89,10 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         builder.appendLine("BarTab Tagesexport;${LocalDate.now()}")
         builder.appendLine("Umsatz;${summary.revenueCents.toEuroDecimal()}")
         builder.appendLine("Verkäufe;${summary.completedSalesCount}")
+        builder.appendLine("Personalgetränke;${summary.staffSalesCount}")
         builder.appendLine("Stornos;${summary.cancelledSalesCount}")
         builder.appendLine()
-        builder.appendLine("sale_id;zeit;status;produkt;menge;einzelpreis_eur;zeilensumme_eur")
+        builder.appendLine("sale_id;zeit;status;personal;produkt;menge;einzelpreis_eur;zeilensumme_eur")
 
         todaysSales.forEach { sale ->
             sale.items.forEach { item ->
@@ -103,6 +101,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
                         sale.id,
                         sale.createdAt.format(timeFormat),
                         sale.status.name,
+                        if (sale.isStaff) "ja" else "nein",
                         item.product.name.csvEscape(),
                         item.quantity.toString(),
                         item.product.priceCents.toEuroDecimal(),
@@ -139,15 +138,22 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
     fun clearCart() {
         cartMap.clear()
+        currentSaleIsStaff = false
     }
 
     fun completeSale() {
         val items = cartItems
         if (items.isEmpty()) return
+        val isStaff = currentSaleIsStaff
         viewModelScope.launch {
-            repository.completeSale(items)
+            repository.completeSale(items, isStaff)
             cartMap.clear()
+            currentSaleIsStaff = false
         }
+    }
+
+    fun toggleCurrentSaleIsStaff(value: Boolean) {
+        currentSaleIsStaff = value
     }
 
     fun setProductActive(productId: String, active: Boolean) {
@@ -202,6 +208,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         if (nextCart.isEmpty()) return false
         cartMap.clear()
         nextCart.forEach { (productId, quantity) -> cartMap[productId] = quantity }
+        currentSaleIsStaff = sale.isStaff
         return true
     }
 
@@ -220,6 +227,7 @@ data class SaleRecord(
     val createdAt: LocalDateTime,
     val items: List<SaleItem>,
     val status: SaleStatus,
+    val isStaff: Boolean,
 ) {
     val totalCents: Int = items.sumOf { it.lineTotalCents }
 }
@@ -227,6 +235,7 @@ data class SaleRecord(
 data class DaySummary(
     val completedSalesCount: Int,
     val cancelledSalesCount: Int,
+    val staffSalesCount: Int,
     val revenueCents: Int,
 )
 
@@ -242,6 +251,4 @@ enum class SaleStatus(val label: String) {
 }
 
 private fun Int.toEuroDecimal(): String = "%.2f".format(this / 100.0).replace('.', ',')
-
-private fun String.csvEscape(): String =
-    '"' + replace("\"", "\"\"") + '"'
+private fun String.csvEscape(): String = '"' + replace("\"", "\"\"") + '"'
