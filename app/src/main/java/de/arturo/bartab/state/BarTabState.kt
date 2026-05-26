@@ -32,6 +32,10 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     var archivedDays by mutableStateOf<List<ArchivedDay>>(emptyList())
         private set
     var currentSaleIsStaff by mutableStateOf(false)
+    var isCompletingSale by mutableStateOf(false)
+        private set
+    var isArchivingToday by mutableStateOf(false)
+        private set
 
     private val cartMap = mutableStateMapOf<String, Int>()
 
@@ -106,7 +110,15 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     fun staffDrinksForArchivedDay(dayKey: String): List<ProductSalesSummary> = productSummariesForDay(dayKey, staff = true)
 
     fun archiveToday() {
-        viewModelScope.launch { repository.archiveDay(todayKey, todaySummary) }
+        if (isArchivingToday) return
+        viewModelScope.launch {
+            isArchivingToday = true
+            try {
+                repository.archiveDay(todayKey, todaySummary)
+            } finally {
+                isArchivingToday = false
+            }
+        }
     }
 
     fun buildTodayCsv(): String = buildCsvForDay(todayKey)
@@ -198,12 +210,17 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
 
     fun completeSale() {
         val items = cartItems
-        if (items.isEmpty()) return
+        if (items.isEmpty() || isCompletingSale) return
         val isStaff = currentSaleIsStaff
         viewModelScope.launch {
-            repository.completeSale(items, isStaff)
-            cartMap.clear()
-            currentSaleIsStaff = false
+            isCompletingSale = true
+            try {
+                repository.completeSale(items, isStaff)
+                cartMap.clear()
+                currentSaleIsStaff = false
+            } finally {
+                isCompletingSale = false
+            }
         }
     }
 
@@ -241,6 +258,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
     fun addCategory(name: String) {
         val trimmedName = name.trim()
         if (trimmedName.isBlank()) return
+        if (categories.any { it.name.equals(trimmedName, ignoreCase = true) }) return
         val category = Category(
             id = UUID.randomUUID().toString(),
             name = trimmedName,

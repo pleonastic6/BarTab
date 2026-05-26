@@ -73,6 +73,7 @@ fun SalesScreen(state: BarTabViewModel) {
                     CartPanel(
                         cartItems = cartItems,
                         totalCents = state.totalCents,
+                        isCompletingSale = state.isCompletingSale,
                         onIncrement = state::increment,
                         onDecrement = state::decrement,
                         onClear = state::clearCart,
@@ -99,6 +100,7 @@ fun SalesScreen(state: BarTabViewModel) {
                     CartPanel(
                         cartItems = cartItems,
                         totalCents = state.totalCents,
+                        isCompletingSale = state.isCompletingSale,
                         onIncrement = state::increment,
                         onDecrement = state::decrement,
                         onClear = state::clearCart,
@@ -410,6 +412,7 @@ private fun ProductTile(
 private fun CartPanel(
     cartItems: List<SaleItem>,
     totalCents: Int,
+    isCompletingSale: Boolean,
     onIncrement: (String) -> Unit,
     onDecrement: (String) -> Unit,
     onClear: () -> Unit,
@@ -492,7 +495,7 @@ private fun CartPanel(
                 OutlinedButton(
                     onClick = onClear,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = cartItems.isNotEmpty(),
+                    enabled = cartItems.isNotEmpty() && !isCompletingSale,
                 ) {
                     Text("Warenkorb leeren")
                 }
@@ -522,9 +525,9 @@ private fun CartPanel(
                 Button(
                     onClick = onComplete,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = cartItems.isNotEmpty(),
+                    enabled = cartItems.isNotEmpty() && !isCompletingSale,
                 ) {
-                    Text("Verkauf abschließen")
+                    Text(if (isCompletingSale) "Speichert..." else "Verkauf abschließen")
                 }
             }
         }
