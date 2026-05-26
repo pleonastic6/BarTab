@@ -47,6 +47,16 @@ data class SaleEntity(
     val note: String?,
 )
 
+@Entity(tableName = "day_closures")
+data class DayClosureEntity(
+    @PrimaryKey val dayKey: String,
+    val closedAtEpochMillis: Long,
+    val revenueCents: Int,
+    val completedSalesCount: Int,
+    val staffSalesCount: Int,
+    val cancelledSalesCount: Int,
+)
+
 @Entity(
     tableName = "sale_items",
     foreignKeys = [

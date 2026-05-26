@@ -29,6 +29,8 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         private set
     var saleHistory by mutableStateOf<List<SaleRecord>>(emptyList())
         private set
+    var archivedDays by mutableStateOf<List<ArchivedDay>>(emptyList())
+        private set
     var currentSaleIsStaff by mutableStateOf(false)
 
     private val cartMap = mutableStateMapOf<String, Int>()
@@ -38,6 +40,7 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
         viewModelScope.launch { repository.observeCategories().collectLatest { categories = it } }
         viewModelScope.launch { repository.observeProducts().collectLatest { products = it } }
         viewModelScope.launch { repository.observeSales().collectLatest { saleHistory = it } }
+        viewModelScope.launch { repository.observeDayClosures().collectLatest { archivedDays = it } }
     }
 
     val cartItems: List<SaleItem>
@@ -95,6 +98,15 @@ class BarTabViewModel(application: Application) : AndroidViewModel(application) 
                 )
             }
             .sortedWith(compareByDescending<ProductSalesSummary> { it.quantity }.thenBy { it.productName })
+
+    val isTodayArchived: Boolean
+        get() = archivedDays.any { it.dayKey == LocalDate.now().toString() }
+
+    fun archiveToday() {
+        val dayKey = LocalDate.now().toString()
+        val summary = todaySummary
+        viewModelScope.launch { repository.archiveDay(dayKey, summary) }
+    }
 
     fun buildTodayCsv(): String {
         val summary = todaySummary
@@ -280,6 +292,12 @@ data class ProductSalesSummary(
     val productName: String,
     val quantity: Int,
     val revenueCents: Int,
+)
+
+data class ArchivedDay(
+    val dayKey: String,
+    val closedAt: LocalDateTime,
+    val summary: DaySummary,
 )
 
 enum class SaleStatus(val label: String) {

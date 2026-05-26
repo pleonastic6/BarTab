@@ -19,6 +19,9 @@ interface BarTabDao {
     @Query("SELECT * FROM sales ORDER BY createdAtEpochMillis DESC")
     fun observeSalesWithItems(): Flow<List<SaleWithItemsEntity>>
 
+    @Query("SELECT * FROM day_closures ORDER BY dayKey DESC")
+    fun observeDayClosures(): Flow<List<DayClosureEntity>>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertCategories(categories: List<CategoryEntity>)
 
@@ -36,6 +39,9 @@ interface BarTabDao {
 
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSaleItems(items: List<SaleItemEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertDayClosure(dayClosure: DayClosureEntity)
 
     @Query("UPDATE products SET active = :active WHERE id = :productId")
     suspend fun updateProductActive(productId: String, active: Boolean)

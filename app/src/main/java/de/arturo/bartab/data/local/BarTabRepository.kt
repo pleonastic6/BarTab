@@ -4,6 +4,8 @@ import de.arturo.bartab.data.model.Category
 import de.arturo.bartab.data.model.Product
 import de.arturo.bartab.data.model.SampleData
 import de.arturo.bartab.data.model.SaleItem
+import de.arturo.bartab.state.ArchivedDay
+import de.arturo.bartab.state.DaySummary
 import de.arturo.bartab.state.SaleRecord
 import de.arturo.bartab.state.SaleStatus
 import kotlinx.coroutines.flow.Flow
@@ -62,6 +64,24 @@ class BarTabRepository(
         }
     }
 
+    fun observeDayClosures(): Flow<List<ArchivedDay>> = dao.observeDayClosures().map { closures ->
+        closures.map { entity ->
+            ArchivedDay(
+                dayKey = entity.dayKey,
+                closedAt = LocalDateTime.ofInstant(
+                    Instant.ofEpochMilli(entity.closedAtEpochMillis),
+                    ZoneId.systemDefault(),
+                ),
+                summary = DaySummary(
+                    completedSalesCount = entity.completedSalesCount,
+                    cancelledSalesCount = entity.cancelledSalesCount,
+                    staffSalesCount = entity.staffSalesCount,
+                    revenueCents = entity.revenueCents,
+                ),
+            )
+        }
+    }
+
     suspend fun seedIfEmpty() {
         if (dao.categoryCount() > 0) return
         dao.insertCategories(SampleData.categories.map { CategoryEntity(it.id, it.name, it.sortOrder) })
@@ -108,6 +128,19 @@ class BarTabRepository(
                     lineTotalCents = it.lineTotalCents,
                 )
             },
+        )
+    }
+
+    suspend fun archiveDay(dayKey: String, summary: DaySummary) {
+        dao.insertDayClosure(
+            DayClosureEntity(
+                dayKey = dayKey,
+                closedAtEpochMillis = System.currentTimeMillis(),
+                revenueCents = summary.revenueCents,
+                completedSalesCount = summary.completedSalesCount,
+                staffSalesCount = summary.staffSalesCount,
+                cancelledSalesCount = summary.cancelledSalesCount,
+            ),
         )
     }
 

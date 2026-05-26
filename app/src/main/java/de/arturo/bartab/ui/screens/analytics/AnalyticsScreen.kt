@@ -11,88 +11,120 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import de.arturo.bartab.state.ArchivedDay
 import de.arturo.bartab.state.BarTabViewModel
+import de.arturo.bartab.state.ProductSalesSummary
 import de.arturo.bartab.ui.components.toEuroString
 import de.arturo.bartab.ui.export.shareCsv
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun AnalyticsScreen(state: BarTabViewModel) {
     val summary = state.todaySummary
     val soldProducts = state.todayProductSummaries
     val staffDrinks = state.todayStaffDrinkSummaries
+    val archivedDays = state.archivedDays
     val context = LocalContext.current
 
-    Column(
+    LazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text("Auswertung", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-
-        Button(
-            onClick = {
-                shareCsv(
-                    context = context,
-                    fileName = state.exportFileName(),
-                    content = state.buildTodayCsv(),
-                )
-            },
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            Text("CSV exportieren")
+        item {
+            Text("Auswertung", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
         }
-
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text("Heute", fontWeight = FontWeight.Bold)
-                SummaryRow("Umsatz", summary.revenueCents.toEuroString())
-                SummaryRow("Verkäufe", summary.completedSalesCount.toString())
-                SummaryRow("Personalgetränke", summary.staffSalesCount.toString())
-                SummaryRow("Stornos", summary.cancelledSalesCount.toString())
+        item {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Button(
+                    onClick = {
+                        shareCsv(
+                            context = context,
+                            fileName = state.exportFileName(),
+                            content = state.buildTodayCsv(),
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                ) {
+                    Text("CSV exportieren")
+                }
+                OutlinedButton(
+                    onClick = state::archiveToday,
+                    modifier = Modifier.weight(1f),
+                    enabled = !state.isTodayArchived,
+                ) {
+                    Text(if (state.isTodayArchived) "Tag archiviert" else "Tagesabschluss")
+                }
             }
         }
-
-        Text("Verkaufte Getränke", fontWeight = FontWeight.Bold)
-        if (soldProducts.isEmpty()) {
-            Text("Heute wurden noch keine bezahlten Verkäufe abgeschlossen")
-        } else {
-            ProductSummaryList(items = soldProducts)
+        item {
+            Card(modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Heute", fontWeight = FontWeight.Bold)
+                    SummaryRow("Umsatz", summary.revenueCents.toEuroString())
+                    SummaryRow("Verkäufe", summary.completedSalesCount.toString())
+                    SummaryRow("Personalgetränke", summary.staffSalesCount.toString())
+                    SummaryRow("Stornos", summary.cancelledSalesCount.toString())
+                }
+            }
         }
-
-        Text("Personalgetränke", fontWeight = FontWeight.Bold)
-        if (staffDrinks.isEmpty()) {
-            Text("Heute wurden noch keine Personalgetränke dokumentiert")
+        item { Text("Verkaufte Getränke", fontWeight = FontWeight.Bold) }
+        if (soldProducts.isEmpty()) {
+            item { Text("Heute wurden noch keine bezahlten Verkäufe abgeschlossen") }
         } else {
-            ProductSummaryList(items = staffDrinks)
+            items(soldProducts, key = { "sold-" + it.productName }) { item -> ProductSummaryCard(item) }
+        }
+        item { Text("Personalgetränke", fontWeight = FontWeight.Bold) }
+        if (staffDrinks.isEmpty()) {
+            item { Text("Heute wurden noch keine Personalgetränke dokumentiert") }
+        } else {
+            items(staffDrinks, key = { "staff-" + it.productName }) { item -> ProductSummaryCard(item) }
+        }
+        item { Text("Archivierte Tage", fontWeight = FontWeight.Bold) }
+        if (archivedDays.isEmpty()) {
+            item { Text("Noch kein Tagesabschluss archiviert") }
+        } else {
+            items(archivedDays, key = { it.dayKey }) { day -> ArchivedDayCard(day) }
         }
     }
 }
 
 @Composable
-private fun ProductSummaryList(items: List<de.arturo.bartab.state.ProductSalesSummary>) {
-    LazyColumn(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        items(items, key = { it.productName }) { item ->
-            Card(modifier = Modifier.fillMaxWidth()) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        Text(item.productName, fontWeight = FontWeight.SemiBold)
-                        Text("${item.quantity} Stück")
-                    }
-                    Text(item.revenueCents.toEuroString(), fontWeight = FontWeight.Bold)
-                }
+private fun ProductSummaryCard(item: ProductSalesSummary) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(item.productName, fontWeight = FontWeight.SemiBold)
+                Text("${item.quantity} Stück")
             }
+            Text(item.revenueCents.toEuroString(), fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+@Composable
+private fun ArchivedDayCard(day: ArchivedDay) {
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(day.dayKey, fontWeight = FontWeight.Bold)
+            SummaryRow("Archiviert", day.closedAt.format(DateTimeFormatter.ofPattern("dd.MM.yyyy · HH:mm")))
+            SummaryRow("Umsatz", day.summary.revenueCents.toEuroString())
+            SummaryRow("Verkäufe", day.summary.completedSalesCount.toString())
+            SummaryRow("Personalgetränke", day.summary.staffSalesCount.toString())
+            SummaryRow("Stornos", day.summary.cancelledSalesCount.toString())
         }
     }
 }
