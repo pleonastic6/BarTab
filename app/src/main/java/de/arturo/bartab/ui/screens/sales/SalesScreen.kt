@@ -137,14 +137,7 @@ private fun CategoryHotbarList(
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Text("Kategorien", style = MaterialTheme.typography.headlineMedium)
-            Text(
-                "Tippe auf eine Kategorie für alle Artikel. Rechts daneben liegen die Hotbar-Favoriten.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ) {            LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items(categories, key = { it.id }) { category ->
                     val hotbarProducts = state.quickAccessProductsForCategory(category.id)
                     CategoryRowCard(
@@ -180,9 +173,9 @@ private fun CategoryRowCard(
         ) {
             Card(
                 modifier = Modifier
-                    .width(170.dp)
+                    .width(150.dp)
                     .clickable(onClick = onOpenCategory)
-                    .heightIn(min = 92.dp),
+                    .heightIn(min = 110.dp),
                 shape = RoundedCornerShape(18.dp),
                 colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             ) {
@@ -192,17 +185,11 @@ private fun CategoryRowCard(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.Center,
                 ) {
-                    Text(category.name, style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        "Alle Artikel anzeigen",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
+                    Text(category.name, style = MaterialTheme.typography.titleLarge)                }
             }
 
             LazyVerticalGrid(
-                columns = GridCells.Fixed(5),
+                columns = GridCells.Fixed(4),
                 modifier = Modifier.weight(1f).heightIn(min = 92.dp, max = 160.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -225,7 +212,7 @@ private fun HotbarTile(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.heightIn(min = 92.dp),
+        modifier = Modifier.heightIn(min = 110.dp),
     ) {
         Column(
             modifier = Modifier
@@ -283,7 +270,7 @@ private fun ProductTile(
         onClick = onClick,
         shape = RoundedCornerShape(22.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-        modifier = Modifier.heightIn(min = 124.dp),
+        modifier = Modifier.heightIn(min = 148.dp),
     ) {
         Column(
             modifier = Modifier
